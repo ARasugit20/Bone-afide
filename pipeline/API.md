@@ -74,17 +74,26 @@ curl "http://localhost:8000/dogs?all=true"
 
 ## 3. `GET /dogs/{dog_id}/profile`
 
-Full Mongo document: contract fields + `history` array + `staff_notes` and
-`vet_review` if present + a derived `level_status`. `404` if the dog is unknown.
+Full Mongo document: contract fields + `history` array + `events` + `welfare` +
+`staff_notes`/`vet_review` if present + a derived `level_status`. `404` if the dog is
+unknown. (`GET /dogs/{dog_id}` returns this same document.)
+
+The **`welfare`** field is a kennel-decline alert computed from the dog's last 3
+Tiger sessions: `{status, sessions, stress_change, message}`. `status` is
+`rising_stress` (stress up ≥10 points over the last 3 sessions), `improving` (down
+≥10), or `stable`. With fewer than 3 sessions, `status` is `stable` and `message` is
+"Not enough sessions yet". `message` is plain staff-facing text.
 
 ```bash
 curl http://localhost:8000/dogs/luna-01/profile
 ```
 
+Real response for luna-01 (Lola):
+
 ```json
 {
   "dog_id": "luna-01",
-  "day": 1,
+  "day": 4,
   "energy": 100,
   "stress": 49,
   "approachability": 99,
@@ -94,7 +103,17 @@ curl http://localhost:8000/dogs/luna-01/profile
   "trend": "stable",
   "needs": ["active home with daily exercise", "owner comfortable with an excitable dog"],
   "history": [{ "day": 1, "energy": 100, "stress": 49, "...": "..." }],
-  "level_status": "provisional"
+  "name": "Lola",
+  "level_status": "provisional",
+  "events": [
+    {"type": "calm", "start_s": 0.7, "end_s": 7.63, "label": "Watching calmly from the back"}
+  ],
+  "welfare": {
+    "status": "rising_stress",
+    "sessions": 4,
+    "stress_change": 32,
+    "message": "Stress up 32 points over 3 sessions. Consider a quieter kennel or foster priority."
+  }
 }
 ```
 

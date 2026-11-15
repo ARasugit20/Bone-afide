@@ -24,6 +24,30 @@ def test_calm_stretch_detected():
     assert (calm[0]["end_s"] - calm[0]["start_s"]) >= CALM_MIN_S
 
 
+def test_calm_stretch_survives_jitter():
+    # A dog that stays put but jitters a little every frame (camera shake / box
+    # wobble). The old per-step-speed test broke on any jitter; the net-wander test
+    # should still report one calm stretch.
+    import random
+    random.seed(1)
+    tracks = []
+    for i in range(80):
+        jx = random.uniform(-0.02, 0.02)  # small wobble, well under a body length
+        jy = random.uniform(-0.02, 0.02)
+        tracks.append(_t(i * 0.1, _box(0.5 + jx, 0.6 + jy)))
+    calm = [e for e in extract_events(tracks) if e["type"] == "calm"]
+    assert calm, "jittering-but-stationary dog should still produce a calm event"
+    assert (calm[0]["end_s"] - calm[0]["start_s"]) >= CALM_MIN_S
+
+
+def test_calm_label_is_from_allowed_set():
+    tracks = [_t(i * 0.1, _box(0.5, 0.6)) for i in range(80)]
+    allowed = {"Calm and settled", "Resting quietly", "Watching calmly from the back"}
+    for e in extract_events(tracks):
+        if e["type"] == "calm":
+            assert e["label"] in allowed
+
+
 def test_jump_event_detected_and_labeled():
     tracks = []
     for i in range(120):

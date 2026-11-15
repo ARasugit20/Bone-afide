@@ -83,6 +83,7 @@ def upsert_summary(
     video_url: Optional[str] = None,
     name: Optional[str] = None,
     events: Optional[list] = None,
+    welfare: Optional[dict] = None,
     settings: Optional[Settings] = None,
 ) -> dict:
     """Upsert the contract ``summary`` for its dog, appending to a daily history.
@@ -117,6 +118,8 @@ def upsert_summary(
         set_fields["video_url"] = video_url
     if events is not None:
         set_fields["events"] = events
+    if welfare is not None:
+        set_fields["welfare"] = welfare
 
     col.update_one(
         {"dog_id": dog_id},

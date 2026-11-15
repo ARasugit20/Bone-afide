@@ -20,7 +20,6 @@ from typing import Optional
 
 from .features import (
     ACCEL_MIN_BL,
-    MOVING_SPEED_BL,
     PERSIST_S,
     REVERSAL_DEADBAND_BL,
     REVERSAL_DEADBAND_FRAME,
@@ -30,8 +29,9 @@ from .features import (
 from .guardrails import sanitize
 from .schemas import FrameTrack
 
-CALM_MIN_S = 5.0          # a calm stretch must last at least this long
-CALM_SPEED_BL = MOVING_SPEED_BL  # below this speed (body lengths/sec) counts as calm
+CALM_MIN_S = 5.0            # a calm stretch must last at least this long
+CALM_WANDER_BL = REVERSAL_DEADBAND_BL  # max net wander (body lengths) to stay "calm"
+                                       # = the pacing deadband, so jitter never breaks it
 
 
 def _round(x: float) -> float:
@@ -118,24 +118,40 @@ def extract_events(tracks: list[FrameTrack]) -> list[dict]:
             else:
                 j += 1
 
-    # --- calm stretches (>= CALM_MIN_S of low speed) ---
-    k = 0
-    while k < len(speeds):
-        if speeds[k] >= CALM_SPEED_BL:
-            k += 1
-            continue
-        start_i = k
-        while k < len(speeds) and speeds[k] < CALM_SPEED_BL:
-            k += 1
-        st = step_times[start_i][0]
-        en = step_times[k - 1][1]
-        if en - st >= CALM_MIN_S:
-            # Posture: tall box => standing/sitting calmly; short/wide => lying down.
-            mid = (start_i + k - 1) // 2
-            lying = hw[mid + 1] < 0.8 if mid + 1 < len(hw) else False
-            label = "Settled, lying down" if lying else "Stood calmly"
-            events.append({"type": "calm", "start_s": _round(st), "end_s": _round(en),
-                           "label": label})
+    # --- calm stretches ---
+    # A calm stretch is a window of >= CALM_MIN_S where the dog stays put: it never
+    # travels more than CALM_WANDER_BL body lengths from where the stretch began.
+    # This uses net position (not per-step speed), so camera jitter or a one-frame
+    # box wobble cannot break an otherwise-still stretch -- the old per-step-speed
+    # test required EVERY step under threshold and so missed genuinely calm dogs.
+    i = 0
+    cy = s["cy"]
+    while i < n:
+        anchor_x, anchor_y = cx[i], cy[i]
+        bw0 = ws[i] or 1e-6
+        j = i
+        while j + 1 < n:
+            nx, ny = cx[j + 1], cy[j + 1]
+            wander = math.hypot(nx - anchor_x, ny - anchor_y) / bw0
+            if wander > CALM_WANDER_BL:
+                break
+            j += 1
+        if times[j] - times[i] >= CALM_MIN_S:
+            # Position of the box in frame: back (high in frame / small) vs near.
+            mid = (i + j) // 2
+            lying = hw[mid] < 0.8
+            back = cy[mid] < 0.45  # higher in frame = further back in the kennel
+            if lying:
+                label = "Resting quietly"
+            elif back:
+                label = "Watching calmly from the back"
+            else:
+                label = "Calm and settled"
+            events.append({"type": "calm", "start_s": _round(times[i]),
+                           "end_s": _round(times[j]), "label": label})
+            i = j + 1
+        else:
+            i += 1
 
     events = merge_and_cap(events)
     # Guardrail: every label must be clean.

@@ -319,10 +319,13 @@ def cmd_run_all(args: argparse.Namespace) -> int:
                     tiger.write_readings(dog_id=dog_id, day=d, hour=hour, scores=sc)
                 except Exception as e:
                     print(f"  [tiger] write day {d} failed: {type(e).__name__}: {e}")
+        welfare = None
         if tiger_enabled and tiger is not None:
             try:
                 tiger.refresh_daily()
                 trend = tiger.compute_trend(dog_id) or "stable"
+                from .welfare import compute_welfare
+                welfare = compute_welfare(tiger.get_trend(dog_id))
             except Exception as e:
                 print(f"  [tiger] refresh/trend failed: {type(e).__name__}: {e}")
 
@@ -377,7 +380,8 @@ def cmd_run_all(args: argparse.Namespace) -> int:
             try:
                 from . import store_mongo
                 store_mongo.upsert_summary(summary, photo=photo_url, video_url=video_url,
-                                           name=clip_name, events=events, settings=settings)
+                                           name=clip_name, events=events, welfare=welfare,
+                                           settings=settings)
                 wrote_mongo = True
             except Exception as e:
                 print(f"  [mongo] write failed: {type(e).__name__}: {e}")
@@ -423,15 +427,27 @@ def cmd_reextract_events(args: argparse.Namespace) -> int:
         except Exception as e:
             print(f"  {dog_id}: analyze failed: {type(e).__name__}: {e}")
             continue
+        # Recompute welfare from current Tiger rows too (cheap, no re-write of scores).
+        welfare = None
+        if settings.tiger_dsn:
+            try:
+                from . import store_tiger
+                from .welfare import compute_welfare
+                welfare = compute_welfare(store_tiger.get_trend(dog_id))
+            except Exception as e:
+                print(f"  {dog_id}: [tiger] welfare failed: {type(e).__name__}: {e}")
+
         updated = False
         if settings.mongo_uri:
             col = store_mongo.get_collection(settings)
             if store_mongo.is_owned(dog_id):
-                res = col.update_one({"dog_id": dog_id},
-                                     {"$set": {"events": events,
-                                               "updated_at": store_mongo._now_iso()}})
+                set_fields = {"events": events, "updated_at": store_mongo._now_iso()}
+                if welfare is not None:
+                    set_fields["welfare"] = welfare
+                res = col.update_one({"dog_id": dog_id}, {"$set": set_fields})
                 updated = res.matched_count > 0
-        print(f"  {dog_id}: {len(events)} events  mongo_updated={updated}")
+        w = welfare["status"] if welfare else "n/a"
+        print(f"  {dog_id}: {len(events)} events  welfare={w}  mongo_updated={updated}")
     return 0
 
 
