@@ -29,7 +29,9 @@ async function check(): Promise<Service[]> {
   const supermemory = env("SUPERMEMORY_API_KEY");
   const tiger = env("TIGER_URL");
   const bedrock = ["BEDROCK_REGION", "BEDROCK_MODEL_ID", "BEDROCK_KEY_ID", "BEDROCK_SECRET"].every(env);
-  const cognito = env("NEXT_PUBLIC_USER_POOL_ID") && env("NEXT_PUBLIC_USER_POOL_CLIENT_ID");
+  // Sign-in is off for the MVP unless NEXT_PUBLIC_AUTH_ENABLED="true".
+  const cognito =
+    process.env.NEXT_PUBLIC_AUTH_ENABLED === "true" && env("NEXT_PUBLIC_USER_POOL_ID") && env("NEXT_PUBLIC_USER_POOL_CLIENT_ID");
   const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
   const [mongoUp, geminiUp, memoryUp, tigerUp] = await Promise.all([

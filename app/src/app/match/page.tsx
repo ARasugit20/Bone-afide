@@ -196,7 +196,7 @@ function MatchPage() {
                   <span className="rounded-full bg-sand px-2.5 py-0.5 text-xs font-bold text-muted">{foster.length}</span>
                 </div>
                 {foster.length ? (
-                  <div className="rounded-3xl border-2 border-dashed border-orange-200 bg-orange-50/40 p-4">
+                  <div className="rounded-3xl border-2 border-dashed border-line bg-forest-tint/60 p-4">
                     <p className="mb-3 text-sm text-muted">
                       Blocked for every waiting family by handling level or approachability. A foster or a behavior-team plan comes first.
                     </p>

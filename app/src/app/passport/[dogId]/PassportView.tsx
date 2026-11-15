@@ -66,7 +66,7 @@ export function PassportView() {
           <div className="mt-4 space-y-3.5">
             <Bar label="Energy" value={d.energy} color="bg-clay" />
             <Bar label="Stress" value={d.stress} color="bg-sage" delay={80} />
-            <Bar label="Approachability" value={d.approachability} color="bg-amber-400" delay={160} />
+            <Bar label="Approachability" value={d.approachability} color="bg-tennis" delay={160} />
             <Bar label="Confidence" value={d.confidence} color="bg-sky-400" delay={240} />
             <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} delay={320} />
           </div>

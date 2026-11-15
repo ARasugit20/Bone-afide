@@ -32,10 +32,10 @@ function DogsPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`shrink-0 rounded-full px-1 py-1 transition ${filter === f ? "bg-ink/90 ring-2 ring-ink" : "hover:bg-sand"}`}
+            className={`shrink-0 rounded-full px-1 py-1 transition ${filter === f ? "bg-forest ring-2 ring-forest" : "hover:bg-sand"}`}
           >
             {f === "All" ? (
-              <span className={`px-3 text-xs font-bold ${filter === f ? "text-cream" : "text-muted"}`}>All dogs</span>
+              <span className={`px-3 text-xs font-bold ${filter === f ? "text-on-dark" : "text-muted"}`}>All dogs</span>
             ) : (
               <LevelChip level={f} />
             )}

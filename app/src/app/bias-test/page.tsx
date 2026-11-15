@@ -105,13 +105,13 @@ function BiasTest() {
                 key={d.dog_id}
                 onClick={() => { setPicked(d.dog_id); setResult(null); }}
                 className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-left transition ${
-                  d.dog_id === dogId ? "bg-ink text-cream shadow-sm" : "bg-cream ring-1 ring-line hover:bg-sand"
+                  d.dog_id === dogId ? "bg-forest text-on-dark shadow-glow" : "bg-surface ring-1 ring-line hover:ring-forest hover:text-forest"
                 }`}
               >
                 <Avatar name={d.name} size="h-9 w-9 text-sm" />
                 <span>
                   <span className="block text-sm font-bold">{displayName(d, dogs.data ?? [])}</span>
-                  <span className={`text-[11px] ${d.dog_id === dogId ? "text-cream/70" : "text-muted"}`}>{d.handling_level}</span>
+                  <span className={`text-[11px] ${d.dog_id === dogId ? "text-on-dark/75" : "text-muted"}`}>{d.handling_level}</span>
                 </span>
               </button>
             ))}
@@ -219,7 +219,7 @@ function Results({ result, roster }: { result: Result; roster: Dog[] }) {
               <div className="space-y-2.5">
                 <Bar label="Energy" value={d.energy} color="bg-clay" />
                 <Bar label="Stress" value={d.stress} color="bg-sage" />
-                <Bar label="Approachability" value={d.approachability} color="bg-amber-400" />
+                <Bar label="Approachability" value={d.approachability} color="bg-tennis" />
                 <Bar label="Confidence" value={d.confidence} color="bg-sky-400" />
                 <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} />
               </div>
@@ -228,9 +228,9 @@ function Results({ result, roster }: { result: Result; roster: Dog[] }) {
         ))}
       </div>
 
-      <div className="rounded-3xl bg-ink px-6 py-5 text-center text-cream">
+      <div className="section-dark rounded-[28px] px-6 py-5 text-center">
         <p className="font-display text-2xl font-semibold">Our scores never see breed.</p>
-        <p className="mt-1 text-sm text-cream/70">
+        <p className="mt-1 text-sm text-on-dark/75">
           Same numbers in both columns — they come from behavior on video, not a label. Labels above are hypothetical; Bonafide never records breed. Decision support, not a diagnosis.
         </p>
       </div>

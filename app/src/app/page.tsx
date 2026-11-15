@@ -57,17 +57,20 @@ function Dashboard() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <section className="rise relative overflow-hidden rounded-[2rem] bg-ink px-5 py-8 text-cream sm:px-10 sm:py-12">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-clay/35 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/4 h-64 w-64 rounded-full bg-sage/25 blur-3xl" />
+      <section className="section-dark rise relative isolate overflow-hidden rounded-[28px] px-5 py-8 shadow-lift sm:px-10 sm:py-12">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          <div className="glow-forest absolute -left-40 -top-24 size-[560px] opacity-50" />
+          <div className="glow-grass absolute -right-40 top-[20%] size-[520px] opacity-35" />
+          <div className="glow-tennis absolute -bottom-48 left-[35%] size-[420px] opacity-20" />
+        </div>
 
         <div className="relative grid items-center gap-8 lg:grid-cols-[1.5fr_1fr]">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#f6b48f]">Bonafide</p>
-            <h1 className="mt-3 font-display text-[2.6rem] font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-              Judge the dog, <span className="italic text-[#f6b48f]">not the label.</span>
+            <p className="eyebrow text-tennis">Behavior, measured — never breed</p>
+            <h1 className="mt-4 font-display text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.03em] text-on-dark sm:text-6xl">
+              Judge the dog, <span className="block"><em className="italic text-tennis">not the label.</em></span>
             </h1>
-            <p className="mt-4 max-w-xl text-base text-cream/80 sm:text-lg">
+            <p className="mt-5 max-w-xl text-base text-on-dark/75 sm:text-lg">
               We score real behavior from kennel video and match the whole shelter to families at once — breed is never used.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -78,7 +81,7 @@ function Dashboard() {
             {runError && <div className="mt-4"><ErrorNote message={runError} /></div>}
           </div>
           <div className="hidden justify-center lg:flex" aria-hidden>
-            <div className="grid h-56 w-56 place-items-center rounded-full bg-cream/10 ring-1 ring-cream/15">
+            <div className="grid h-56 w-56 place-items-center rounded-full bg-on-dark/5 ring-1 ring-on-dark/15">
               <Mascot className="h-40 w-40 drop-shadow-xl" />
             </div>
           </div>
@@ -89,14 +92,14 @@ function Dashboard() {
             <Link
               key={s.label}
               href={s.href}
-              className="rounded-2xl bg-cream/10 px-3 py-3 ring-1 ring-cream/15 transition hover:bg-cream/15 sm:px-5 sm:py-4"
+              className="rounded-[20px] bg-on-dark/5 px-3 py-3 ring-1 ring-on-dark/15 transition hover:bg-on-dark/10 hover:ring-tennis/50 sm:px-5 sm:py-4"
             >
               {s.loading ? (
-                <span className="block h-9 w-10 animate-pulse rounded-lg bg-cream/20" />
+                <span className="block h-9 w-10 animate-pulse rounded-lg bg-on-dark/20" />
               ) : (
-                <span className="block font-display text-3xl font-semibold tabular-nums sm:text-5xl">{s.value ?? 0}</span>
+                <span className="block font-display text-3xl font-semibold tabular-nums text-on-dark sm:text-5xl">{s.value ?? 0}</span>
               )}
-              <span className="mt-1 block text-xs font-semibold text-cream/75 sm:text-sm">{s.label}</span>
+              <span className="mt-1 block text-xs font-semibold text-on-dark/75 sm:text-sm">{s.label}</span>
             </Link>
           ))}
         </div>
@@ -108,16 +111,16 @@ function Dashboard() {
         <ol className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-3">
           {STEPS.map((s, i) => (
             <Fragment key={s.title}>
-              <li className="flex flex-1 items-start gap-3 rounded-3xl border border-line bg-white/85 p-4 shadow-[0_8px_24px_-14px_rgba(120,70,40,0.25)] sm:p-5">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-clay/12 text-clay-dark">{s.icon}</span>
+              <li className="card-surface flex flex-1 items-start gap-3 p-4 sm:p-5">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-forest-tint text-forest">{s.icon}</span>
                 <span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Step {i + 1}</span>
+                  <span className="eyebrow text-forest">Step {i + 1}</span>
                   <span className="block font-display text-lg font-semibold leading-tight">{s.title}</span>
                   <span className="mt-0.5 block text-sm text-muted">{s.body}</span>
                 </span>
               </li>
               {i < STEPS.length - 1 && (
-                <li aria-hidden className="flex justify-center text-2xl font-bold text-clay-dark/60">
+                <li aria-hidden className="flex justify-center text-2xl font-bold text-grass/70">
                   <span className="md:hidden">↓</span>
                   <span className="hidden md:inline">→</span>
                 </li>
@@ -148,8 +151,8 @@ function Dashboard() {
             )}
           </Card>
           <Link href="/bias-test" className="group block rounded-3xl">
-            <Card className="bg-gradient-to-br from-white to-[#fdeee4] transition group-hover:-translate-y-0.5 group-hover:border-clay/40">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-dark">Bias test</p>
+            <Card className="bg-gradient-to-br from-surface to-forest-tint transition duration-200 ease-ui group-hover:-translate-y-1 group-hover:border-forest/40 group-hover:shadow-lift">
+              <p className="eyebrow text-forest">Bias test</p>
               <h2 className="mt-1 font-display text-2xl font-semibold">Same dog. Two labels. Watch the AI change its mind.</h2>
               <p className="mt-2 text-sm text-muted">
                 We ask a general AI about one dog twice — once with a breed label, once with another. Our behavior scores don&apos;t move, because they never see breed.

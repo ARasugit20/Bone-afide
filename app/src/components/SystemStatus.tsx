@@ -26,7 +26,7 @@ export function SystemStatus() {
             const up = s.configured && s.reachable !== false;
             return (
               <li key={s.name} className="flex items-start gap-3 py-2 text-sm">
-                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${up ? "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" : "bg-stone-300"}`} />
+                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${up ? "bg-grass shadow-[0_0_0_3px_rgb(76_154_106/0.18)]" : "bg-stone-300"}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold">{s.name}</span>

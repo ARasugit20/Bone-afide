@@ -13,12 +13,20 @@ import { Empty, Spinner } from "./ui";
 
 const POOL_ID = process.env.NEXT_PUBLIC_USER_POOL_ID;
 const CLIENT_ID = process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID;
-export const COGNITO_ENABLED = Boolean(POOL_ID && CLIENT_ID);
+
+/**
+ * Sign-in is off for the MVP. Set NEXT_PUBLIC_AUTH_ENABLED="true" (plus the
+ * NEXT_PUBLIC_USER_POOL_* ids) to bring back the Cognito login gate. While it is
+ * off, no sign-in / sign-up / sign-out UI renders and the nav role switcher
+ * decides what each page shows.
+ */
+export const AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
+export const COGNITO_ENABLED = AUTH_ENABLED && Boolean(POOL_ID && CLIENT_ID);
 
 if (COGNITO_ENABLED) {
   Amplify.configure({ Auth: { Cognito: { userPoolId: POOL_ID!, userPoolClientId: CLIENT_ID! } } });
-} else if (typeof window !== "undefined") {
-  console.warn("[auth] NEXT_PUBLIC_USER_POOL_* is empty — Cognito disabled, using the demo role switcher");
+} else if (AUTH_ENABLED && typeof window !== "undefined") {
+  console.warn("[auth] NEXT_PUBLIC_AUTH_ENABLED is true but NEXT_PUBLIC_USER_POOL_* is empty — using the role switcher");
 }
 
 type AuthState = {
@@ -104,7 +112,8 @@ function CognitoBridge({ children }: { children: React.ReactNode }) {
 export function Gate({ allow, children }: { allow: Role[]; children: React.ReactNode }) {
   const auth = useAuth();
   if (auth.status === "loading") return <Spinner label="Checking your access…" />;
-  if (auth.status === "signedOut") {
+  // The Amplify sign-in screen only exists when the auth flag is on.
+  if (COGNITO_ENABLED && auth.status === "signedOut") {
     return (
       <div className="mx-auto max-w-md py-6">
         <Authenticator />
@@ -134,28 +143,34 @@ const ROLES: { id: Role; label: string }[] = [
   { id: "family", label: "Family" },
 ];
 
+/** Staff · Vet · Family pills; the choice is saved in localStorage ("bonafide_role"). */
+export function RoleSwitcher() {
+  const auth = useAuth();
+  return (
+    <div className="flex items-center gap-1 rounded-full bg-sand p-1" role="group" aria-label="View as role">
+      <span className="px-2 text-[11px] font-bold uppercase tracking-wider text-muted lg:hidden xl:inline">View as</span>
+      {ROLES.map((r) => (
+        <button
+          key={r.id}
+          type="button"
+          onClick={() => auth.setDemoRole(r.id)}
+          aria-pressed={auth.role === r.id}
+          className={`min-h-8 rounded-full px-3 py-1 text-xs font-bold transition ${
+            auth.role === r.id ? "bg-surface text-forest shadow-sm" : "text-muted hover:text-forest"
+          }`}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function AccountControl() {
   const auth = useAuth();
-  if (auth.mode === "demo") {
-    return (
-      <div className="flex items-center gap-1 rounded-full bg-sand p-1" role="group" aria-label="View as role (Cognito not configured)">
-        <span className="px-2 text-[11px] font-bold uppercase tracking-wider text-muted">View as</span>
-        {ROLES.map((r) => (
-          <button
-            key={r.id}
-            onClick={() => auth.setDemoRole(r.id)}
-            aria-pressed={auth.role === r.id}
-            className={`min-h-8 rounded-full px-3 py-1 text-xs font-bold transition ${
-              auth.role === r.id ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
-    );
-  }
-  if (auth.status !== "signedIn") return null;
+  if (auth.mode === "demo") return <RoleSwitcher />;
+  // Cognito account chip + sign-out: only reachable with NEXT_PUBLIC_AUTH_ENABLED="true".
+  if (!COGNITO_ENABLED || auth.status !== "signedIn") return null;
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="rounded-full bg-sand px-2.5 py-1 font-bold capitalize">{auth.role}</span>

@@ -11,7 +11,7 @@ export function FamilyCard({ family }: { family: Family }) {
     `~${family.hours_alone}h alone`,
   ];
   return (
-    <div className="rounded-3xl border border-line bg-white p-4 shadow-[0_8px_24px_-14px_rgba(120,70,40,0.25)]">
+    <div className="card-surface p-4">
       <div className="flex items-center gap-3">
         <Avatar name={family.name.replace(/^The /, "")} />
         <div className="min-w-0">

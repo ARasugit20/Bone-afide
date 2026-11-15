@@ -18,7 +18,7 @@ export function ExperienceFit({ dog, family }: { dog: Dog; family: Family }) {
         {EXPERIENCE.map((label, i) => (
           <div key={label} className="text-center">
             <div
-              className={`h-2.5 rounded-full ${i <= family.experience ? "bg-ink/80" : "bg-sand"} ${
+              className={`h-2.5 rounded-full ${i <= family.experience ? "bg-forest" : "bg-sand"} ${
                 i === need ? `ring-2 ring-offset-2 ring-offset-white ${LEVELS[dog.handling_level].ring}` : ""
               }`}
             />

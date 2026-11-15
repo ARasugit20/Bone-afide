@@ -9,7 +9,7 @@ export function Card({ children, className = "", style }: { children: React.Reac
   return (
     <div
       style={style}
-      className={`rounded-3xl border border-line bg-white/85 p-5 shadow-[0_1px_0_#ecdcc8,0_8px_24px_-12px_rgba(120,70,40,0.18)] sm:p-6 ${className}`}
+      className={`card-surface p-5 sm:p-6 ${className}`}
     >
       {children}
     </div>
@@ -112,7 +112,7 @@ export function ReviewBadge({ dog }: { dog: Dog }) {
   return null;
 }
 
-const AVATAR_TONES = ["bg-[#f2c9a8]", "bg-[#cfe0c3]", "bg-[#f5d98f]", "bg-[#e7c2c8]", "bg-[#c9d8e8]"];
+const AVATAR_TONES = ["bg-forest-tint", "bg-emerald-50", "bg-sky/45", "bg-tennis/40", "bg-sand"];
 
 export function Avatar({ name, size = "h-12 w-12 text-lg" }: { name: string; size?: string }) {
   const tone = AVATAR_TONES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
@@ -150,7 +150,7 @@ export function Spinner({ label, rotate = false }: { label?: string; rotate?: bo
 
 export function Empty({ title, body, action }: { title: string; body?: string; action?: React.ReactNode }) {
   return (
-    <div className="rounded-3xl border-2 border-dashed border-line bg-white/60 px-5 py-10 text-center sm:px-6 sm:py-12">
+    <div className="rounded-[28px] border-2 border-dashed border-line bg-surface/70 px-5 py-10 text-center sm:px-6 sm:py-12">
       <Mascot className="mx-auto mb-3 h-16 w-16" />
       <p className="font-display text-xl font-semibold">{title}</p>
       {body && <p className="mx-auto mt-1 max-w-md text-sm text-muted">{body}</p>}
@@ -177,8 +177,8 @@ export function Button({
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean; variant?: "primary" | "ghost" }) {
   const styles =
     variant === "primary"
-      ? "bg-clay-dark text-white shadow-sm hover:bg-[#8f4021]"
-      : "bg-white text-ink ring-1 ring-line hover:bg-sand";
+      ? "bg-forest text-on-dark shadow-glow hover:bg-forest-dark"
+      : "bg-surface text-ink ring-1 ring-line hover:text-forest hover:ring-forest";
   return (
     <button
       {...props}

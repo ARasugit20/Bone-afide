@@ -4,9 +4,9 @@ import { Area, CartesianGrid, ComposedChart, Legend, Line, ReferenceDot, Respons
 
 export type TrendPoint = { bucket: string; avg_stress: number | string; avg_energy: number | string };
 
-const STRESS = "#4f7d54";
-const ENERGY = "#d9714b";
-const AXIS = "#6f5d54";
+const STRESS = "#2e5e45"; // forest
+const ENERGY = "#5fa8d3"; // sky, deepened for contrast on white
+const AXIS = "#5c6b5f"; // muted-ink
 
 export function TrendChart({ series }: { series: TrendPoint[] }) {
   const data = series.map((p, i) => ({
@@ -45,11 +45,11 @@ export function TrendChart({ series }: { series: TrendPoint[] }) {
                 <stop offset="100%" stopColor={STRESS} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#ecdcc8" strokeDasharray="4 4" vertical={false} />
+            <CartesianGrid stroke="#dce5d3" strokeDasharray="4 4" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: AXIS, fontSize: 12 }} axisLine={false} tickLine={false} />
             <YAxis domain={[0, 100]} tick={{ fill: AXIS, fontSize: 12 }} axisLine={false} tickLine={false} />
             <Tooltip
-              contentStyle={{ borderRadius: 16, border: "1px solid #ecdcc8", background: "#fffdf9" }}
+              contentStyle={{ borderRadius: 16, border: "1px solid #dce5d3", background: "#ffffff" }}
               labelFormatter={(l, p) => `${l} · ${p?.[0]?.payload?.date ?? ""}`}
             />
             <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />

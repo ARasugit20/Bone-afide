@@ -9,7 +9,7 @@ export function DogCard({ dog, compact = false, href, roster = [] }: { dog: Dog;
   return (
     <Link
       href={href ?? `/dogs/${dog.dog_id}`}
-      className="group block rounded-3xl border border-line bg-white p-4 shadow-[0_8px_24px_-14px_rgba(120,70,40,0.25)] transition hover:-translate-y-0.5 hover:border-clay/40 hover:shadow-[0_14px_30px_-14px_rgba(120,70,40,0.35)]"
+      className="group block card-surface p-4 transition duration-200 ease-ui hover:-translate-y-1 hover:shadow-lift hover:border-forest/40"
     >
       <div className="flex items-start gap-3">
         <Avatar name={dog.name} />

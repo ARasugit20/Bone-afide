@@ -1,41 +1,165 @@
 @import "tailwindcss";
 
+/*
+ * Bonafide design system — shared with the landing page (landing/src/styles.css).
+ * "Dog Park" palette: bark, forest, grass, tennis, sky, ink, muted-ink, canvas, surface, line
+ * plus 4 handling levels, which are the only warm tones allowed.
+ *
+ * The app's older token names (cream, sand, clay, sage, muted) are kept as aliases so every
+ * page picks up the landing palette without rewriting each class.
+ */
+
 @theme inline {
-  --color-cream: #fff8ef;
-  --color-sand: #f5e9da;
-  --color-line: #ecdcc8;
-  --color-ink: #2f2420;
-  --color-muted: #6f5d54;
-  --color-clay: #d9714b;
-  --color-clay-dark: #a94e29;
-  --color-sage: #5f8a63;
+  /* Landing palette */
+  --color-bark: #18241d;
+  --color-ink: #18241d;
+  --color-muted-ink: #5c6b5f;
+  --color-canvas: #f2f6ec;
+  --color-surface: #ffffff;
+  --color-line: #dce5d3;
+  --color-on-dark: #ffffff;
+  --color-forest: #2e5e45;
+  --color-forest-dark: #234a36;
+  --color-forest-tint: #eaf0ec;
+  --color-grass: #4c9a6a;
+  --color-tennis: #d4e25a;
+  --color-sky: #a9d3ec;
+
+  --color-level-green: #1f5a36;
+  --color-level-yellow: #7a5b0b;
+  --color-level-orange: #8a3b12;
+  --color-level-red: #8e2a23;
+
+  /* Legacy app names → landing palette */
+  --color-cream: #f2f6ec; /* canvas */
+  --color-sand: #e6eedf; /* soft fill for tracks, pills, skeletons */
+  --color-muted: #5c6b5f; /* muted-ink */
+  --color-clay: #2e5e45; /* forest: primary accent */
+  --color-clay-dark: #234a36; /* forest-dark: links, eyebrows, pressed */
+  --color-sage: #4c9a6a; /* grass */
+
+  /* Status colors follow the four handling levels (green / yellow / orange / red). */
+  --color-emerald-50: #ddf3e4;
+  --color-emerald-100: #cdebd7;
+  --color-emerald-200: #b5dfc3;
+  --color-emerald-500: #4c9a6a;
+  --color-emerald-700: #2e5e45;
+  --color-emerald-800: #1f5a36;
+  --color-amber-50: #fbf3c8;
+  --color-amber-200: #efe09a;
+  --color-amber-400: #d9b53a;
+  --color-amber-500: #c9a227;
+  --color-amber-700: #7a5b0b;
+  --color-amber-800: #7a5b0b;
+  --color-amber-900: #5e4508;
+  --color-orange-50: #fce6d4;
+  --color-orange-200: #f3c9a8;
+  --color-orange-500: #c9622a;
+  --color-orange-800: #8a3b12;
+  --color-rose-50: #f9dedc;
+  --color-rose-100: #f6d3d0;
+  --color-rose-200: #eebcb7;
+  --color-rose-500: #b8463d;
+  --color-rose-700: #8e2a23;
+  --color-rose-800: #8e2a23;
+  --color-rose-900: #6e1f1a;
+  --color-stone-100: #e6eedf;
+  --color-stone-300: #c9d3c2;
+  --color-stone-600: #5c6b5f;
+  --color-stone-700: #3f4c42;
+  --color-sky-400: #7fbde3;
+
   --font-sans: var(--font-nunito);
   --font-display: var(--font-fraunces);
+
+  --radius-card: 28px;
+  --shadow-card: 0 12px 32px -16px rgb(24 36 29 / 0.22);
+  --shadow-lift: 0 20px 40px -18px rgb(24 36 29 / 0.32);
+  --shadow-glow: 0 10px 30px -8px rgb(46 94 69 / 0.6);
+  --ease-ui: cubic-bezier(0.2, 0, 0, 1);
 }
 
 body {
   background:
-    radial-gradient(1200px 500px at 10% -10%, #ffe6d1 0%, transparent 60%),
-    radial-gradient(900px 400px at 110% 0%, #f3ead8 0%, transparent 55%),
-    var(--color-cream);
+    radial-gradient(1100px 480px at 8% -12%, rgb(76 154 106 / 0.12) 0%, transparent 60%),
+    radial-gradient(900px 420px at 108% -4%, rgb(212 226 90 / 0.14) 0%, transparent 55%),
+    var(--color-canvas);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-variation-settings: "opsz" 96;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-tennis) 45%, white);
   color: var(--color-ink);
 }
 
-/* One consistent, high-contrast keyboard focus style everywhere. */
+/* One consistent, high-contrast keyboard focus style everywhere (matches the landing page). */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 3px solid var(--color-clay-dark);
-  outline-offset: 2px;
+  outline: 3px solid var(--color-forest);
+  outline-offset: 3px;
   border-radius: 0.75rem;
 }
 
 [data-amplify-authenticator] {
-  --amplify-colors-primary-10: #fbe9e1;
-  --amplify-colors-primary-80: #a94e29;
-  --amplify-colors-primary-90: #8f4021;
-  --amplify-colors-primary-100: #77351b;
-  --amplify-components-authenticator-router-border-radius: 1.5rem;
+  --amplify-colors-primary-10: #eaf0ec;
+  --amplify-colors-primary-80: #2e5e45;
+  --amplify-colors-primary-90: #234a36;
+  --amplify-colors-primary-100: #18241d;
+  --amplify-components-authenticator-router-border-radius: 1.75rem;
   --amplify-components-button-border-radius: 9999px;
   --amplify-components-fieldcontrol-border-radius: 1rem;
+}
+
+/* ---------- Landing-page surfaces ---------- */
+@utility card-surface {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+@utility section-dark {
+  background: var(--color-bark);
+  color: var(--color-on-dark);
+}
+
+@utility glass-nav {
+  background: color-mix(in oklab, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-line) 80%, transparent);
+}
+
+@utility glow-forest {
+  background: radial-gradient(circle, color-mix(in oklab, var(--color-forest) 85%, transparent), transparent 65%);
+  filter: blur(48px);
+}
+@utility glow-grass {
+  background: radial-gradient(circle, color-mix(in oklab, var(--color-grass) 65%, transparent), transparent 65%);
+  filter: blur(48px);
+}
+@utility glow-tennis {
+  background: radial-gradient(circle, color-mix(in oklab, var(--color-tennis) 50%, transparent), transparent 65%);
+  filter: blur(48px);
+}
+
+@utility bg-logo {
+  background-image: linear-gradient(135deg, var(--color-forest), var(--color-grass));
+}
+@utility bg-signature {
+  background-image: linear-gradient(120deg, var(--color-forest), var(--color-grass), var(--color-tennis));
+}
+
+@utility eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .no-scrollbar { scrollbar-width: none; }

@@ -71,7 +71,7 @@ export function DogView() {
           <div className="flex flex-col gap-2 sm:items-end">
             <Link
               href={`/passport/${d.dog_id}`}
-              className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-cream hover:bg-ink/90"
+              className="inline-flex items-center justify-center rounded-full bg-forest px-5 py-2.5 text-sm font-bold text-on-dark shadow-glow transition hover:bg-forest-dark"
             >
               View behavior passport →
             </Link>
@@ -102,7 +102,7 @@ export function DogView() {
           <div className="space-y-4">
             <Bar label="Energy" value={d.energy} color="bg-clay" delay={150} />
             <Bar label="Stress" value={d.stress} color="bg-sage" hint={d.stress > 60 ? "needs a calm start" : undefined} delay={250} />
-            <Bar label="Approachability" value={d.approachability} color="bg-amber-400" delay={350} />
+            <Bar label="Approachability" value={d.approachability} color="bg-tennis" delay={350} />
             <Bar label="Confidence" value={d.confidence} color="bg-sky-400" delay={450} />
             <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} hint="per session" delay={550} />
           </div>

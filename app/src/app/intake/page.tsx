@@ -142,7 +142,7 @@ function IntakePage() {
             <div key={i} className={`rise flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <p
                 className={`max-w-[85%] whitespace-pre-line rounded-3xl px-4 py-2.5 text-sm leading-relaxed ${
-                  m.role === "user" ? "rounded-br-lg bg-ink text-cream" : "rounded-bl-lg bg-sand text-ink"
+                  m.role === "user" ? "rounded-br-lg bg-forest text-on-dark" : "rounded-bl-lg bg-sand text-ink"
                 }`}
               >
                 {m.text}
