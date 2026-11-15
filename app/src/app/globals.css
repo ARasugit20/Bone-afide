@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-cream: #fff8ef;
+  --color-sand: #f5e9da;
+  --color-line: #ecdcc8;
+  --color-ink: #2f2420;
+  --color-muted: #6f5d54;
+  --color-clay: #d9714b;
+  --color-clay-dark: #a94e29;
+  --color-sage: #5f8a63;
+  --font-sans: var(--font-nunito);
+  --font-display: var(--font-fraunces);
+}
+
+body {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #ffe6d1 0%, transparent 60%),
+    radial-gradient(900px 400px at 110% 0%, #f3ead8 0%, transparent 55%),
+    var(--color-cream);
+  color: var(--color-ink);
+}
+
+/* One consistent, high-contrast keyboard focus style everywhere. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-clay-dark);
+  outline-offset: 2px;
+  border-radius: 0.75rem;
+}
+
+[data-amplify-authenticator] {
+  --amplify-colors-primary-10: #fbe9e1;
+  --amplify-colors-primary-80: #a94e29;
+  --amplify-colors-primary-90: #8f4021;
+  --amplify-colors-primary-100: #77351b;
+  --amplify-components-authenticator-router-border-radius: 1.5rem;
+  --amplify-components-button-border-radius: 9999px;
+  --amplify-components-fieldcontrol-border-radius: 1rem;
+}
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@keyframes fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.bar-fill {
+  transform-origin: left;
+  animation: fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes draw-x { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes draw-y { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+.draw-x { transform-origin: left; animation: draw-x 0.7s ease-out both; }
+.draw-y { transform-origin: top; animation: draw-y 0.7s ease-out both; }
+
+@keyframes ear-l { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-9deg); } }
+@keyframes ear-r { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(9deg); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+.mascot-ear-l { transform-box: fill-box; transform-origin: 80% 10%; animation: ear-l 1.1s ease-in-out infinite; }
+.mascot-ear-r { transform-box: fill-box; transform-origin: 20% 10%; animation: ear-r 1.1s ease-in-out infinite; }
+.mascot-bob { animation: bob 1.1s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .bar-fill, .draw-x, .draw-y, .mascot-ear-l, .mascot-ear-r, .mascot-bob { animation: none !important; }
+}

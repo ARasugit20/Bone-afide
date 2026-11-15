@@ -1,0 +1,23 @@
+---
+description: Bonafide project conventions — scope, data contract, language, and UI style
+alwaysApply: true
+---
+
+# Bonafide
+
+Shelter-dog matching platform. Dog behavior is measured from kennel video (teammate's `/pipeline`), then the whole shelter is matched to families at once with the Hungarian algorithm. Breed is never used.
+
+## Scope
+- Only edit files inside `/app`. Never create or edit anything in `/pipeline`.
+- All shared types live in `src/lib/types.ts`. The `Dog` type is a data contract with the pipeline — never rename its fields.
+- Reuse helpers in `src/lib` (`db`, `match`, `memory`, `gemini`, `bedrock`) instead of writing new clients.
+- Empty env vars must not crash anything: skip the feature, `console.warn`, use a fallback. Never log secret values.
+
+## Language
+- Never output the words "aggressive", "dangerous", or "menace" (UI, prompts, notes, seed data).
+- Describe dogs with handling levels **Green / Yellow / Orange / Red** and their **needs** (e.g. "no cats yet").
+- Every score shown in the UI gets the caption: "Decision support, not a diagnosis."
+- Breed is never stored, asked about, or shown.
+
+## UI
+- Warm, clean, rounded, mobile-friendly. Tailwind, generous spacing, soft colors, `rounded-2xl` cards.
