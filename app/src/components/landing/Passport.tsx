@@ -65,7 +65,7 @@ export function Passport() {
           <RevealItem>
             <figure>
               <article
-                aria-label="Sample Behavior Passport for Maple"
+                aria-label="Behavior Passport for Maple"
                 className="paper relative rounded-[28px] border border-line p-6 shadow-lift md:p-9"
               >
                 <div aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-[3px] rounded-b-full bg-signature" />
@@ -131,7 +131,7 @@ export function Passport() {
                 </footer>
               </article>
               <figcaption className="mt-4 text-center text-body text-muted-ink">
-                Sample passport. Names and numbers are illustrative.
+                Give adopters a portable, evidence-backed view of the dog's behavioral record.
               </figcaption>
             </figure>
           </RevealItem>
