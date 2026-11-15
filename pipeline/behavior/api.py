@@ -142,6 +142,15 @@ def dog_profile(dog_id: str) -> dict:
     return doc
 
 
+@app.get("/dogs/{dog_id}/events", dependencies=[Depends(auth_dependency)])
+def dog_events(dog_id: str) -> dict:
+    settings = load_settings()
+    doc = store_mongo.get_profile(dog_id, settings=settings)
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"dog {dog_id} not found")
+    return {"dog_id": dog_id, "events": doc.get("events", [])}
+
+
 @app.get("/dogs/{dog_id}/trend", dependencies=[Depends(auth_dependency)])
 def dog_trend(dog_id: str) -> dict:
     settings = load_settings()

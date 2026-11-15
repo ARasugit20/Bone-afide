@@ -64,8 +64,39 @@ def analyze_one(video, dog_id, day, *, fps=None, weights=None, conf=None,
         "info": info, "frames": frames, "tracks": tracks, "features": features,
         "scores": scores, "device": device, "weights": weights, "conf": conf,
         "speed_factor": speed_factor, "duration_real": duration_real,
-        "elapsed": elapsed,
+        "elapsed": elapsed, "zone": zone,
     }
+
+
+def segment_scores(r, n_segments, settings, camera_id=None):
+    """Split one analyzed clip into N equal time windows and score each window.
+
+    Uses the already-computed tracks (no re-analysis, no model reload). Returns a
+    list of (scores, features) for day 1..N, from real per-window motion only.
+    """
+    tracks = r["tracks"]
+    zone = r["zone"]
+    info = r["info"]
+    if not tracks:
+        return []
+    t0 = tracks[0].timestamp_s
+    t1 = tracks[-1].timestamp_s
+    span = (t1 - t0) or 1e-6
+    width = span / n_segments
+
+    out = []
+    for seg in range(n_segments):
+        lo = t0 + seg * width
+        hi = t0 + (seg + 1) * width
+        # include right edge on the last segment
+        window = [t for t in tracks
+                  if lo <= t.timestamp_s < hi or (seg == n_segments - 1 and t.timestamp_s <= hi)]
+        feats = extract_features(
+            window, zone, frame_w=info.width, frame_h=info.height,
+            duration_s=max(width, 1e-6), close_area_frac=settings.close_area_frac,
+        )
+        out.append((compute_scores(feats), feats))
+    return out
 
 
 def _clip_stem(video: str) -> str:
@@ -256,7 +287,11 @@ def cmd_run_all(args: argparse.Namespace) -> int:
         speed_factor = float(clip.get("speed_factor", 1.0))
         camera_id = clip.get("camera_id")
 
-        print(f"\n=== {dog_id} (day {day}, hour {hour}) ===")
+        # Segment count: per-clip override, else global --segments, else 1.
+        n_seg = int(clip.get("segments", getattr(args, "segments", 1) or 1))
+        clip_name = clip.get("name")
+
+        print(f"\n=== {dog_id} (hour {hour}, segments={n_seg}) ===")
         try:
             r = analyze_one(video, dog_id, day, camera_id=camera_id,
                             speed_factor=speed_factor, settings=settings)
@@ -265,29 +300,50 @@ def cmd_run_all(args: argparse.Namespace) -> int:
             results.append((dog_id, "ERROR", [], False))
             continue
 
-        scores = r["scores"]
-        features = r["features"]
-        level = assign_level(scores, config_dir=settings.config_dir)
-        needs = derive_needs(scores, features, config_dir=settings.config_dir)
+        from .events import extract_events
+        events = extract_events(r["tracks"])
 
-        # Trend from Tiger if available, else stable.
+        # Per-segment scores (day 1..N). N=1 means the whole clip as day `day`.
+        if n_seg > 1:
+            seg_list = segment_scores(r, n_seg, settings, camera_id=camera_id)
+            seg_days = list(range(1, n_seg + 1))
+        else:
+            seg_list = [(r["scores"], r["features"])]
+            seg_days = [day]
+
+        # Write every segment to Tiger as its own day; keep the latest for Mongo.
         trend = "stable"
+        for d, (sc, _ft) in zip(seg_days, seg_list):
+            if tiger_enabled and tiger is not None:
+                try:
+                    tiger.write_readings(dog_id=dog_id, day=d, hour=hour, scores=sc)
+                except Exception as e:
+                    print(f"  [tiger] write day {d} failed: {type(e).__name__}: {e}")
         if tiger_enabled and tiger is not None:
             try:
-                tiger.write_readings(dog_id=dog_id, day=day, hour=hour, scores=scores)
                 tiger.refresh_daily()
                 trend = tiger.compute_trend(dog_id) or "stable"
             except Exception as e:
-                print(f"  [tiger] write/trend failed: {type(e).__name__}: {e}")
+                print(f"  [tiger] refresh/trend failed: {type(e).__name__}: {e}")
+
+        # Latest segment is the headline summary.
+        last_day = seg_days[-1]
+        scores, features = seg_list[-1]
+        level = assign_level(scores, config_dir=settings.config_dir)
+        needs = derive_needs(scores, features, config_dir=settings.config_dir)
 
         summary = build_summary(
-            dog_id=dog_id, day=day, scores=scores,
+            dog_id=dog_id, day=last_day, scores=scores,
             handling_level=level, trend=trend, needs=needs,
         )
 
+        print(f"  per-segment scores: "
+              + ", ".join(f"d{d}:E{s.energy}/St{s.stress}/Ap{s.approachability}"
+                          for d, (s, _) in zip(seg_days, seg_list)))
+
         out_dir = PIPELINE_ROOT / "data" / "out"
         out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / f"{dog_id}_day{day}.json").write_text(json.dumps(summary, indent=2))
+        (out_dir / f"{dog_id}_day{last_day}.json").write_text(json.dumps(summary, indent=2))
 
         # Thumbnail: clearest detected frame.
         from .thumbnail import save_thumbnail
@@ -310,7 +366,7 @@ def cmd_run_all(args: argparse.Namespace) -> int:
                     thumb_path, s3store.thumbnail_key(dog_id),
                     content_type="image/jpeg", settings=settings)
             video_url = s3store.upload_and_presign(
-                annotated_path, s3store.video_key(dog_id, day),
+                annotated_path, s3store.video_key(dog_id, last_day),
                 content_type="video/mp4", settings=settings)
         else:
             print("  [s3] no bucket/credentials; skipping media upload")
@@ -321,14 +377,15 @@ def cmd_run_all(args: argparse.Namespace) -> int:
             try:
                 from . import store_mongo
                 store_mongo.upsert_summary(summary, photo=photo_url, video_url=video_url,
-                                           settings=settings)
+                                           name=clip_name, events=events, settings=settings)
                 wrote_mongo = True
             except Exception as e:
                 print(f"  [mongo] write failed: {type(e).__name__}: {e}")
         else:
             print("  [mongo] MONGO_URI not set; skipping Mongo write")
 
-        print(f"  level={level}  needs={needs}  mongo={'yes' if wrote_mongo else 'no'}"
+        print(f"  level={level}  needs={needs}  events={len(events)}"
+              f"  mongo={'yes' if wrote_mongo else 'no'}"
               f"  photo={'yes' if photo_url else 'no'}  video={'yes' if video_url else 'no'}")
         results.append((dog_id, level, needs, wrote_mongo))
 
@@ -396,6 +453,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_ra = sub.add_parser("run-all", help="analyze every clip in demo_dogs.json; write stores")
     p_ra.add_argument("--config", default=None, help="path to demo_dogs.json (default data/demo_dogs.json)")
+    p_ra.add_argument("--segments", type=int, default=1,
+                      help="split each clip into N equal time segments -> days 1..N "
+                           "(per-clip 'segments' in demo_dogs.json overrides this)")
     p_ra.set_defaults(func=cmd_run_all)
 
     p_ru = sub.add_parser("refresh-urls", help="regenerate 7-day presigned media URLs in Mongo")

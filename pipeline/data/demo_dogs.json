@@ -1,11 +1,11 @@
 {
-  "_comment": "Per-clip demo config for `run-all`. Fields per entry: dog_id, day, hour (time bucket for Tiger), video (path under data/raw unless absolute), speed_factor (corrects slow-motion clips), camera_id. 'excluded' entries are skipped.",
+  "_comment": "Per-clip demo config for `run-all`. Fields per entry: dog_id, day, hour (time bucket for Tiger), video (path under data/raw unless absolute), speed_factor (corrects slow-motion clips), camera_id, optional name (display name; defaults to capitalized dog_id stem). 'excluded' entries are skipped.",
   "clips": [
     {"dog_id": "june-01",   "day": 1, "hour": 9,  "video": "data/raw/june.mp4",   "speed_factor": 1.0, "camera_id": "cam-default"},
-    {"dog_id": "katie-01",  "day": 1, "hour": 10, "video": "data/raw/katie.mp4",  "speed_factor": 1.0, "camera_id": "cam-default"},
-    {"dog_id": "kacy-01",   "day": 1, "hour": 11, "video": "data/raw/kacy.mp4",   "speed_factor": 1.0, "camera_id": "cam-default"},
+    {"dog_id": "katie-01",  "day": 1, "hour": 10, "video": "data/raw/katie.mp4",  "speed_factor": 1.0, "camera_id": "cam-default", "segments": 3},
+    {"dog_id": "kacy-01",   "day": 1, "hour": 11, "video": "data/raw/kacy.mp4",   "speed_factor": 1.0, "camera_id": "cam-default", "segments": 3},
     {"dog_id": "kinder-01", "day": 1, "hour": 12, "video": "data/raw/kinder.mp4", "speed_factor": 1.0, "camera_id": "cam-default"},
-    {"dog_id": "luna-01",   "day": 1, "hour": 13, "video": "data/raw/luna.mp4",   "speed_factor": 4.0, "camera_id": "cam-default"},
+    {"dog_id": "luna-01",   "day": 1, "hour": 13, "video": "data/raw/luna.mp4",   "speed_factor": 4.0, "camera_id": "cam-default", "name": "Lola", "segments": 4},
     {"dog_id": "max-01",    "day": 1, "hour": 14, "video": "data/raw/max.mp4",    "speed_factor": 1.0, "camera_id": "cam-default", "excluded": true}
   ]
 }

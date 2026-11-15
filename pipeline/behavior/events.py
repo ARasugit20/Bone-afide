@@ -1,0 +1,144 @@
+"""Behavior evidence timeline: timestamped events with plain-English labels.
+
+Derives a list of events from the per-frame track (camera-compensated, smoothed, via
+``features.scene_series``) so the frontend can show what happened and when. Four
+event types, all from real motion — never invented or smoothed-over:
+
+  - jump          : a sustained jump / standing-up at the fence.
+  - reversal      : a committed pacing direction change (back-and-forth).
+  - acceleration  : a sudden burst of speed toward the front.
+  - calm          : a stretch of >= 5 s with little movement.
+
+Each event is ``{type, start_s, end_s, label}``. Labels pass the guardrails (no
+banned words, no breed) via ``guardrails.sanitize``.
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Optional
+
+from .features import (
+    ACCEL_MIN_BL,
+    MOVING_SPEED_BL,
+    PERSIST_S,
+    REVERSAL_DEADBAND_BL,
+    REVERSAL_DEADBAND_FRAME,
+    jump_events,
+    scene_series,
+)
+from .guardrails import sanitize
+from .schemas import FrameTrack
+
+CALM_MIN_S = 5.0          # a calm stretch must last at least this long
+CALM_SPEED_BL = MOVING_SPEED_BL  # below this speed (body lengths/sec) counts as calm
+
+
+def _round(x: float) -> float:
+    return round(float(x), 2)
+
+
+def extract_events(tracks: list[FrameTrack]) -> list[dict]:
+    """Return a time-ordered list of behavior events for one clip."""
+    s = scene_series(tracks)
+    if s is None:
+        return []
+    times = s["times"]
+    cx, ws, hs, hw = s["cx"], s["ws"], s["hs"], s["hw"]
+    boxes = s["boxes"]
+    n = len(times)
+    events: list[dict] = []
+
+    # Per-step horizontal/overall speed in body lengths per second.
+    speeds, dxs, step_times = [], [], []
+    for i in range(1, n):
+        dt = times[i] - times[i - 1]
+        if dt <= 0:
+            continue
+        bw = (ws[i] + ws[i - 1]) / 2.0 or 1e-6
+        dx = (cx[i] - cx[i - 1]) / bw
+        dy = (s["cy"][i] - s["cy"][i - 1]) / bw
+        speeds.append(math.hypot(dx, dy) / dt)
+        dxs.append((i, dx))
+        step_times.append((times[i - 1], times[i]))
+
+    # --- jumps / standing up ---
+    for e in jump_events(times, boxes, hs, hw):
+        start = times[e]
+        end = start
+        for k in range(e, n):
+            if times[k] - start > PERSIST_S:
+                break
+            end = times[k]
+        events.append({"type": "jump", "start_s": _round(start), "end_s": _round(end),
+                       "label": "Jumped up at the fence"})
+
+    # --- pacing reversals (committed directional runs, opposite directions) ---
+    deadband = REVERSAL_DEADBAND_BL
+    if ws:
+        bw = sum(ws) / len(ws) or 1e-6
+        deadband = max(REVERSAL_DEADBAND_BL, REVERSAL_DEADBAND_FRAME / bw)
+    runs = []  # (sign, net_bl, start_t, end_t)
+    sign = 0
+    net = 0.0
+    run_start = times[0]
+    for (i, dx) in dxs:
+        if abs(dx) < 1e-4:
+            continue
+        sg = 1 if dx > 0 else -1
+        if sg == sign:
+            net += dx
+        else:
+            if sign != 0:
+                runs.append((sign, abs(net), run_start, times[i - 1]))
+            sign = sg
+            net = dx
+            run_start = times[i - 1]
+    if sign != 0:
+        runs.append((sign, abs(net), run_start, times[-1]))
+    committed = [r for r in runs if r[1] >= deadband and (r[3] - r[2]) >= PERSIST_S]
+    for a, b in zip(committed, committed[1:]):
+        if a[0] != b[0]:
+            events.append({"type": "reversal", "start_s": _round(a[2]),
+                           "end_s": _round(b[3]), "label": "Paced back and forth"})
+
+    # --- sudden accelerations toward the front ---
+    if speeds:
+        srt = sorted(speeds)
+        med = srt[len(srt) // 2]
+        thresh = max(med * 3.0, ACCEL_MIN_BL)
+        j = 0
+        while j < len(speeds) - 1:
+            if speeds[j] > thresh and speeds[j + 1] > thresh:
+                st = step_times[j][0]
+                en = step_times[j + 1][1]
+                events.append({"type": "acceleration", "start_s": _round(st),
+                               "end_s": _round(en), "label": "Rushed toward the front"})
+                j += 2
+            else:
+                j += 1
+
+    # --- calm stretches (>= CALM_MIN_S of low speed) ---
+    k = 0
+    while k < len(speeds):
+        if speeds[k] >= CALM_SPEED_BL:
+            k += 1
+            continue
+        start_i = k
+        while k < len(speeds) and speeds[k] < CALM_SPEED_BL:
+            k += 1
+        st = step_times[start_i][0]
+        en = step_times[k - 1][1]
+        if en - st >= CALM_MIN_S:
+            # Posture: tall box => standing/sitting calmly; short/wide => lying down.
+            mid = (start_i + k - 1) // 2
+            lying = hw[mid + 1] < 0.8 if mid + 1 < len(hw) else False
+            label = "Settled, lying down" if lying else "Stood calmly"
+            events.append({"type": "calm", "start_s": _round(st), "end_s": _round(en),
+                           "label": label})
+
+    events.sort(key=lambda e: (e["start_s"], e["type"]))
+    # Guardrail: every label must be clean.
+    for ev in events:
+        sanitize(ev["label"], _path="event.label")
+    return events

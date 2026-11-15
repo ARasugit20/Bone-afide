@@ -111,6 +111,18 @@ def test_profile_not_found(client):
     assert r.status_code == 404
 
 
+def test_events_endpoint(client):
+    r = client.get("/dogs/luna-01/events")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["dog_id"] == "luna-01"
+    assert isinstance(body["events"], list)
+
+
+def test_events_not_found(client):
+    assert client.get("/dogs/ghost-99/events").status_code == 404
+
+
 def test_trend(client):
     r = client.get("/dogs/luna-01/trend")
     assert r.status_code == 200

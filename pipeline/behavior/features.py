@@ -149,6 +149,39 @@ def jump_events(
     return events
 
 
+def scene_series(tracks: list[FrameTrack]):
+    """Reconstruct the camera-compensated, smoothed per-frame series used for motion.
+
+    Returns a dict with parallel lists over the usable (boxed, non-blurry) frames:
+    ``idx`` (index into ``tracks``), ``times``, ``cx``, ``cy``, ``ws``, ``hs``,
+    ``hw``, and the smoothed ``boxes``. Returns None if fewer than 2 usable frames.
+    Shared by feature extraction and event-timeline extraction so both agree.
+    """
+    usable = [(i, t) for i, t in enumerate(tracks)
+              if t.box_norm is not None and not t.blurry]
+    if len(usable) < 2:
+        return None
+    idx = [i for i, _ in usable]
+    times = [t.timestamp_s for _, t in usable]
+    cam_x = cam_y = 0.0
+    rx, ry, rw, rh = [], [], [], []
+    for _, t in usable:
+        cam_x += t.cam_dx
+        cam_y += t.cam_dy
+        c = _center(t.box_norm)
+        rx.append(c[0] - cam_x)
+        ry.append(c[1] - cam_y)
+        rw.append(_width(t.box_norm))
+        rh.append(_height(t.box_norm))
+    cx, cy = _smooth_series(rx), _smooth_series(ry)
+    ws, hs = _smooth_series(rw), _smooth_series(rh)
+    hw = [h / (w or 1e-6) for w, h in zip(ws, hs)]
+    boxes = [(cx[k] - ws[k] / 2, cy[k] - hs[k] / 2, cx[k] + ws[k] / 2, cy[k] + hs[k] / 2)
+             for k in range(len(idx))]
+    return {"idx": idx, "times": times, "cx": cx, "cy": cy, "ws": ws, "hs": hs,
+            "hw": hw, "boxes": boxes}
+
+
 def jump_frame_flags(tracks: list[FrameTrack]) -> list[bool]:
     """Per-track-frame boolean: True on frames belonging to a detected jump event.
 

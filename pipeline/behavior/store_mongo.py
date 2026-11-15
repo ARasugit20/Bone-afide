@@ -81,6 +81,8 @@ def upsert_summary(
     *,
     photo: Optional[str] = None,
     video_url: Optional[str] = None,
+    name: Optional[str] = None,
+    events: Optional[list] = None,
     settings: Optional[Settings] = None,
 ) -> dict:
     """Upsert the contract ``summary`` for its dog, appending to a daily history.
@@ -107,12 +109,14 @@ def upsert_summary(
         upsert=True,
     )
     set_fields = {k: summary[k] for k in SUMMARY_KEYS}
-    set_fields["name"] = display_name(dog_id)
+    set_fields["name"] = name or display_name(dog_id)
     set_fields["updated_at"] = _now_iso()
     if photo is not None:
         set_fields["photo"] = photo
     if video_url is not None:
         set_fields["video_url"] = video_url
+    if events is not None:
+        set_fields["events"] = events
 
     col.update_one(
         {"dog_id": dog_id},

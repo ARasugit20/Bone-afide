@@ -83,6 +83,18 @@ def test_display_name():
     assert store_mongo.display_name("kacy-01") == "Kacy"
 
 
+def test_name_override_and_events(fake_collection):
+    events = [{"type": "jump", "start_s": 1.0, "end_s": 1.3, "label": "Jumped up at the fence"}]
+    store_mongo.upsert_summary(_summary(1), name="Lola", events=events)
+    assert fake_collection.doc["name"] == "Lola"
+    assert fake_collection.doc["events"] == events
+
+
+def test_name_defaults_to_capitalized_stem(fake_collection):
+    store_mongo.upsert_summary(_summary(1))  # june-01, no name override
+    assert fake_collection.doc["name"] == "June"
+
+
 def test_refuses_non_owned_dog(fake_collection):
     bad = _summary(1)
     bad["dog_id"] = "seed-99"
