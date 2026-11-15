@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { Dog } from "@/lib/types";
+import { needsReview } from "@/lib/ui";
 import { Avatar, LevelChip, MiniBar, TrendBadge } from "./ui";
 
-export function DogCard({ dog, compact = false }: { dog: Dog; compact?: boolean }) {
+export function DogCard({ dog, compact = false, href }: { dog: Dog; compact?: boolean; href?: string }) {
   return (
     <Link
-      href={`/dogs/${dog.dog_id}`}
+      href={href ?? `/dogs/${dog.dog_id}`}
       className="group block rounded-3xl border border-line bg-white/85 p-4 shadow-[0_8px_24px_-14px_rgba(120,70,40,0.25)] transition hover:-translate-y-0.5 hover:border-clay/40 hover:shadow-[0_14px_30px_-14px_rgba(120,70,40,0.35)]"
     >
       <div className="flex items-start gap-3">
@@ -15,7 +16,10 @@ export function DogCard({ dog, compact = false }: { dog: Dog; compact?: boolean 
             <h3 className="truncate font-display text-lg font-semibold group-hover:text-clay-dark">{dog.name}</h3>
             <LevelChip level={dog.handling_level} />
           </div>
-          <p className="text-xs text-muted">Day {dog.day} at the shelter</p>
+          <p className="text-xs text-muted">
+            Day {dog.day} at the shelter
+            {needsReview(dog) && <span className="ml-1.5 font-bold text-amber-700">· Provisional</span>}
+          </p>
         </div>
       </div>
       <div className="mt-3 space-y-1.5">

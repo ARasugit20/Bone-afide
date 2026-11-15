@@ -1,4 +1,4 @@
-import type { Family, HandlingLevel } from "./types";
+import type { Dog, Family, HandlingLevel } from "./types";
 
 export const CAPTION = "Decision support, not a diagnosis.";
 
@@ -8,6 +8,11 @@ export const LEVELS: Record<HandlingLevel, { label: string; chip: string; dot: s
   Orange: { label: "Experienced home", chip: "bg-orange-50 text-orange-800 ring-orange-200", dot: "bg-orange-500", ring: "ring-orange-500" },
   Red: { label: "Behavior team / pro", chip: "bg-rose-50 text-rose-800 ring-rose-200", dot: "bg-rose-500", ring: "ring-rose-500" },
 };
+
+export const LEVEL_RANK: Record<HandlingLevel, number> = { Green: 0, Yellow: 1, Orange: 2, Red: 3 };
+
+// Orange/Red placements are provisional until a vet signs off.
+export const needsReview = (dog: Dog) => LEVEL_RANK[dog.handling_level] >= 2 && !dog.expert_reviewed;
 
 export const EXPERIENCE = ["First-time", "Some", "Experienced", "Foster / pro"] as const;
 export const ACTIVITY = { 1: "Relaxed", 2: "Moderate", 3: "Very active" } as const;

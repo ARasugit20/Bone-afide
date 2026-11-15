@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Dog, HandlingLevel } from "@/lib/types";
-import { CAPTION, LEVELS } from "@/lib/ui";
+import { CAPTION, LEVEL_RANK, LEVELS, needsReview } from "@/lib/ui";
 import { PawIcon } from "./Nav";
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -73,6 +73,25 @@ export function TrendBadge({ trend }: { trend: Dog["trend"] }) {
       {t.label}
     </span>
   );
+}
+
+export function ReviewBadge({ dog }: { dog: Dog }) {
+  if (needsReview(dog)) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 ring-1 ring-amber-200">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+        Provisional — awaiting expert review
+      </span>
+    );
+  }
+  if (LEVEL_RANK[dog.handling_level] >= 2) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">
+        ✓ Expert signed off
+      </span>
+    );
+  }
+  return null;
 }
 
 const AVATAR_TONES = ["bg-[#f2c9a8]", "bg-[#cfe0c3]", "bg-[#f5d98f]", "bg-[#e7c2c8]", "bg-[#c9d8e8]"];

@@ -31,6 +31,18 @@ export interface Family {
   wants?: string;
 }
 
+export type Role = "staff" | "vet" | "family";
+
+export interface Rental {
+  dog_id: string;
+  name: string;
+  address: string;
+  rent: string | number | null;
+  dog_weight_limit_lbs: number | string | null;
+  pet_policy_text: string;
+  url: string;
+}
+
 export interface Match {
   dog_id: string;
   family_id: string;

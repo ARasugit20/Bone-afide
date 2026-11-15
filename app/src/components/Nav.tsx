@@ -3,32 +3,40 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
+import type { Role } from "@/lib/types";
+import { AccountControl, useAuth } from "./AuthProvider";
 
-const LINKS = [
-  { href: "/", label: "Dashboard" },
-  { href: "/dogs", label: "Dogs" },
-  { href: "/match", label: "Match Board" },
-  { href: "/intake", label: "Family Intake" },
+const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] }[] = [
+  { href: "/", label: "Dashboard", roles: ["staff", "vet"] },
+  { href: "/dogs", label: "Dogs", roles: ["staff", "vet"] },
+  { href: "/match", label: "Match Board", familyLabel: "My Match", roles: ["staff", "vet", "family"] },
+  { href: "/intake", label: "Family Intake", roles: ["staff", "vet", "family"] },
 ];
 
 export function Nav() {
   return (
-    <header className="sticky top-0 z-20 border-b border-line/70 bg-cream/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-2xl bg-clay text-white shadow-sm">
-            <PawIcon />
-          </span>
-          <span className="leading-tight">
-            <span className="block font-display text-xl font-semibold">Bonafide</span>
-            <span className="block text-xs text-muted">judge the dog, not the label</span>
-          </span>
-        </Link>
-        <nav className="-mx-1 flex gap-1 overflow-x-auto pb-1 sm:pb-0">
-          <Suspense fallback={<Links path={null} />}>
-            <ActiveLinks />
-          </Suspense>
-        </nav>
+    <header className="sticky top-0 z-20 border-b border-line/70 bg-cream/80 backdrop-blur print:hidden">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-clay text-white shadow-sm">
+              <PawIcon />
+            </span>
+            <span className="leading-tight">
+              <span className="block font-display text-xl font-semibold">Bonafide</span>
+              <span className="block whitespace-nowrap text-xs text-muted">judge the dog, not the label</span>
+            </span>
+          </Link>
+          <div className="lg:hidden"><AccountControl /></div>
+        </div>
+        <div className="flex items-center gap-3">
+          <nav className="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:pb-0">
+            <Suspense fallback={<Links path={null} />}>
+              <ActiveLinks />
+            </Suspense>
+          </nav>
+          <div className="hidden lg:block"><AccountControl /></div>
+        </div>
       </div>
     </header>
   );
@@ -39,8 +47,9 @@ function ActiveLinks() {
 }
 
 function Links({ path }: { path: string | null }) {
+  const { role } = useAuth();
   const active = (href: string) => path !== null && (href === "/" ? path === "/" : path.startsWith(href));
-  return LINKS.map((l) => (
+  return LINKS.filter((l) => l.roles.includes(role)).map((l) => (
     <Link
       key={l.href}
       href={l.href}
@@ -48,7 +57,7 @@ function Links({ path }: { path: string | null }) {
         active(l.href) ? "bg-ink text-cream shadow-sm" : "text-muted hover:bg-sand hover:text-ink"
       }`}
     >
-      {l.label}
+      {role === "family" && l.familyLabel ? l.familyLabel : l.label}
     </Link>
   ));
 }

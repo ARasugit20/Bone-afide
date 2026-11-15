@@ -1,14 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { Gate } from "@/components/AuthProvider";
 import { DogCard } from "@/components/DogCard";
+import { STAFF_ONLY } from "@/lib/access";
 import { Empty, ErrorNote, LevelChip, PageTitle } from "@/components/ui";
 import type { Dog, HandlingLevel } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 const FILTERS: (HandlingLevel | "All")[] = ["All", "Green", "Yellow", "Orange", "Red"];
 
-export default function DogsPage() {
+export default function Page() {
+  return (
+    <Gate allow={STAFF_ONLY}>
+      <DogsPage />
+    </Gate>
+  );
+}
+
+function DogsPage() {
   const { data, error, loading, reload } = useApi<Dog[]>("/api/dogs");
   const [filter, setFilter] = useState<HandlingLevel | "All">("All");
   const dogs = (data ?? []).filter((d) => filter === "All" || d.handling_level === filter);

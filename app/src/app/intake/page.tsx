@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Gate, useAuth } from "@/components/AuthProvider";
 import { FamilyCard } from "@/components/FamilyCard";
+import { EVERYONE } from "@/lib/access";
 import { PawIcon } from "@/components/Nav";
 import { Button, Card, ErrorNote, PageTitle, Spinner } from "@/components/ui";
 import type { Family } from "@/lib/types";
@@ -30,9 +32,18 @@ function toFamily(p: Partial<Family>, family_id: string, name: string): Family {
   };
 }
 
+export default function Page() {
+  return (
+    <Gate allow={EVERYONE}>
+      <IntakePage />
+    </Gate>
+  );
+}
+
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-export default function IntakePage() {
+function IntakePage() {
+  const auth = useAuth();
   const [name, setName] = useState("");
   const [familyId, setFamilyId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -63,7 +74,8 @@ export default function IntakePage() {
   function start(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    const id = `${slug(name)}-${Math.random().toString(36).slice(2, 6)}`;
+    // Signed-in families keep their Cognito id so "My match" can find them later.
+    const id = auth.mode === "cognito" && auth.familyId ? auth.familyId : `${slug(name)}-${Math.random().toString(36).slice(2, 6)}`;
     setFamilyId(id);
     send([], id);
   }
@@ -82,6 +94,7 @@ export default function IntakePage() {
     setSaving(true);
     try {
       await postJSON("/api/families", profile);
+      if (auth.role === "family") auth.setFamilyId(profile.family_id);
       setSaved(true);
     } catch (err) {
       setError((err as Error).message);
@@ -159,7 +172,11 @@ export default function IntakePage() {
               <FamilyCard family={profile} />
               {saved ? (
                 <div className="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-emerald-200">
-                  You&apos;re in! <Link href="/" className="font-bold underline">Run the shelter match</Link> to see your pairing.
+                  {auth.role === "family" ? (
+                    <>You&apos;re in! The shelter runs matches regularly — check <Link href="/match" className="font-bold underline">My Match</Link>.</>
+                  ) : (
+                    <>Family saved. <Link href="/" className="font-bold underline">Run the shelter match</Link> to see their pairing.</>
+                  )}
                 </div>
               ) : (
                 <Button onClick={saveFamily} loading={saving} className="w-full">Save our family</Button>

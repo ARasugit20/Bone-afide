@@ -21,6 +21,16 @@ body {
   color: var(--color-ink);
 }
 
+[data-amplify-authenticator] {
+  --amplify-colors-primary-10: #fbe9e1;
+  --amplify-colors-primary-80: #d9714b;
+  --amplify-colors-primary-90: #b9572f;
+  --amplify-colors-primary-100: #9a4423;
+  --amplify-components-authenticator-router-border-radius: 1.5rem;
+  --amplify-components-button-border-radius: 9999px;
+  --amplify-components-fieldcontrol-border-radius: 1rem;
+}
+
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }

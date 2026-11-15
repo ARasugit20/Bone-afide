@@ -2,6 +2,7 @@ import type { Dog, Family, HandlingLevel, Match } from "./types";
 
 export const MIN_EXPERIENCE: Record<HandlingLevel, number> = { Green: 0, Yellow: 1, Orange: 2, Red: 3 };
 const ENERGY_TARGET = { 1: 30, 2: 55, 3: 80 } as const;
+const MIN_APPROACHABILITY = 30;
 const BLOCKED_COST = 1000;
 const DUMMY_COST = 100;
 
@@ -29,6 +30,10 @@ export function scorePair(dog: Dog, family: Family): PairScore {
   if (family.experience < need) {
     blocked = true;
     reasons.push(`${dog.name} is ${dog.handling_level} level and needs a more experienced home for now`);
+  }
+  if (dog.approachability < MIN_APPROACHABILITY) {
+    blocked = true;
+    reasons.push(`${dog.name} needs time with the behavior team before meeting adopters`);
   }
   const pet = petConflict(dog, family);
   if (pet) {

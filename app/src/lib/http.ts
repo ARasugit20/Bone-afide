@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 
 export { CAPTION } from "./ui";
@@ -12,6 +13,7 @@ export function safe<A extends unknown[]>(fn: (...args: A) => Promise<Response>)
     try {
       return await fn(...args);
     } catch (err) {
+      unstable_rethrow(err); // let Next's own control-flow errors (e.g. prerender bail-out) through
       console.error("[api]", err);
       return fail((err as Error).message);
     }

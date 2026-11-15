@@ -3,14 +3,24 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Gate } from "@/components/AuthProvider";
 import { Button, Card, ErrorNote, LevelChip } from "@/components/ui";
+import { STAFF_ONLY } from "@/lib/access";
 import type { Dog, Family, HandlingLevel, Match } from "@/lib/types";
 import { postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
 
 const LEVEL_ORDER: HandlingLevel[] = ["Green", "Yellow", "Orange", "Red"];
 
-export default function Dashboard() {
+export default function Page() {
+  return (
+    <Gate allow={STAFF_ONLY}>
+      <Dashboard />
+    </Gate>
+  );
+}
+
+function Dashboard() {
   const router = useRouter();
   const dogs = useApi<Dog[]>("/api/dogs");
   const families = useApi<Family[]>("/api/families");

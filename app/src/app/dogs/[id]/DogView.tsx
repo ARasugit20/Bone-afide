@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
-import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, Spinner, TrendBadge } from "@/components/ui";
+import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge } from "@/components/ui";
 import type { Dog } from "@/lib/types";
-import { LEVELS, postJSON } from "@/lib/ui";
+import { getJSON, LEVELS, needsReview, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
 
 type Trend = { fake: boolean; series: TrendPoint[] };
@@ -15,6 +16,25 @@ export function DogView() {
   const { id } = useParams<{ id: string }>();
   const dog = useApi<Dog>(`/api/dogs/${id}`);
   const trend = useApi<Trend>(`/api/trend/${id}`);
+  const auth = useAuth();
+  const [signing, setSigning] = useState(false);
+  const [signError, setSignError] = useState<string | null>(null);
+
+  async function signOff() {
+    setSigning(true);
+    setSignError(null);
+    try {
+      dog.setData(await getJSON<Dog>(`/api/dogs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expert_reviewed: true }),
+      }));
+    } catch (err) {
+      setSignError((err as Error).message);
+    } finally {
+      setSigning(false);
+    }
+  }
 
   if (dog.loading) return <Spinner label="Fetching this pup's profile…" />;
   if (dog.error || !dog.data)
@@ -38,18 +58,25 @@ export function DogView() {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-4xl font-semibold">{d.name}</h1>
               <TrendBadge trend={d.trend} />
+              <ReviewBadge dog={d} />
             </div>
             <p className="text-sm text-muted">
               Day {d.day} at the shelter · {d.expert_reviewed ? "Reviewed by the behavior team" : "Awaiting behavior team review"}
             </p>
           </div>
-          <Link
-            href={`/passport/${d.dog_id}`}
-            className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-cream hover:bg-ink/90"
-          >
-            View adoption passport →
-          </Link>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <Link
+              href={`/passport/${d.dog_id}`}
+              className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-cream hover:bg-ink/90"
+            >
+              View behavior passport →
+            </Link>
+            {auth.role === "vet" && needsReview(d) && (
+              <Button onClick={signOff} loading={signing}>Expert sign-off</Button>
+            )}
+          </div>
         </div>
+        {signError && <div className="mt-3"><ErrorNote message={signError} onRetry={signOff} /></div>}
         <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Handling level</p>
