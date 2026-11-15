@@ -78,6 +78,36 @@ export interface Rental {
   fetched_at?: string;
 }
 
+/**
+ * One kennel-video upload, stored in Mongo `uploads`. The browser PUTs the file straight to S3; the pipeline's
+ * /analyze-s3 reads it from there and updates this record (status, summary) as it works.
+ */
+export interface UploadJob {
+  upload_id: string;
+  dog_id: string;
+  name?: string;
+  day: number;
+  hour: number;
+  bucket: string;
+  key: string;
+  content_type: string;
+  size: number;
+  status: "uploaded" | "waiting_for_pipeline" | "queued" | "processing" | "done" | "failed";
+  message?: string;
+  error?: string;
+  summary?: {
+    dog_id: string;
+    handling_level: HandlingLevel;
+    energy: number;
+    stress: number;
+    approachability: number;
+    confidence: number;
+    arousal_spikes: number;
+  } & Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface RentalJob {
   dog_id: string;
   run_id: string;

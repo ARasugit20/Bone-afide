@@ -8,7 +8,8 @@ applications:
             - npm ci
         build:
           commands:
-            - env | grep -E '^(MONGODB_URI|GEMINI_|SUPERMEMORY_|TINYFISH_|BEDROCK_|TIGER_URL|NEXT_PUBLIC_|XAI_|DISCORD_)' >> .env.production
+            # Amplify doesn't pass console env vars to Next.js server code at runtime; bake them in.
+            - node scripts/write-env.mjs
             - npm run build
       artifacts:
         baseDirectory: .next

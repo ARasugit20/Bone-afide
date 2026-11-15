@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { tigerConfig } from "@/lib/tiger";
 import { Client } from "pg";
 import { db } from "@/lib/db";
 
@@ -50,7 +51,7 @@ async function check(): Promise<Service[]> {
       : false,
     tiger
       ? probe(async () => {
-          const c = new Client({ connectionString: process.env.TIGER_URL, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: TIMEOUT });
+          const c = new Client({ ...tigerConfig()!, connectionTimeoutMillis: TIMEOUT });
           await c.connect();
           try {
             await c.query("SELECT 1");

@@ -5,27 +5,31 @@ import { useEffect, useRef, useState } from "react";
 import { Gate } from "@/components/AuthProvider";
 import { Button, Card, ErrorNote, LevelChip, PageHeader, Source } from "@/components/ui";
 import { STAFF_ONLY } from "@/lib/access";
-import type { Dog, HandlingLevel } from "@/lib/types";
+import type { Dog, HandlingLevel, UploadJob } from "@/lib/types";
+import { getJSON, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
 
-const MAX_MB = 200;
+const MAX_MB = 500;
 
 type Summary = { dog_id: string; handling_level: HandlingLevel; energy: number; stress: number; approachability: number; confidence: number; arousal_spikes: number };
-type Phase = { step: "idle" } | { step: "uploading"; pct: number } | { step: "analyzing"; since: number };
+type Phase = { step: "idle" } | { step: "uploading"; pct: number } | { step: "analyzing"; since: number; label: string };
+type Outcome = { kind: "done"; dog_id: string; summary?: Summary } | { kind: "waiting"; dog_id: string; message: string };
 
-/** XHR instead of fetch so the upload can report progress. */
-function send(form: FormData, onProgress: (pct: number) => void, onUploaded: () => void): Promise<{ dog_id: string; summary: Summary | null }> {
+/** PUT straight to S3 with the presigned URL. XHR instead of fetch so the upload can report progress. */
+function putToS3(url: string, file: File, onProgress: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/upload");
-    xhr.responseType = "json";
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", file.type);
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
-    xhr.upload.onload = onUploaded;
-    xhr.onload = () => (xhr.status < 400 ? resolve(xhr.response) : reject(new Error(xhr.response?.error || `Upload failed (${xhr.status})`)));
-    xhr.onerror = () => reject(new Error("Network error while uploading."));
-    xhr.send(form);
+    xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`S3 rejected the upload (${xhr.status}).`)));
+    xhr.onerror = () => reject(new Error("Network error while uploading to S3."));
+    xhr.send(file);
   });
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const LABELS: Partial<Record<UploadJob["status"], string>> = { uploaded: "Starting analysis", queued: "Queued for analysis", processing: "Tracking and scoring" };
 const FIELD = "w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm outline-none focus:border-forest focus:ring-2 focus:ring-forest/20";
 
 export default function Page() {
@@ -46,7 +50,7 @@ function Upload() {
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
   const [now, setNow] = useState(0); // set when analysis starts; never read the clock during prerender
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<Summary | { dog_id: string } | null>(null);
+  const [done, setDone] = useState<Outcome | null>(null);
   const busy = phase.step !== "idle";
 
   useEffect(() => {
@@ -73,20 +77,26 @@ function Upload() {
     setError(null);
     setDone(null);
     try {
-      const form = new FormData();
-      form.set("video", file);
-      form.set("dog_id", id);
-      form.set("day", String(day));
-      if (dogId === "__new" && newName.trim()) form.set("name", newName.trim());
-      const res = await send(
-        form,
-        (pct) => setPhase({ step: "uploading", pct }),
-        () => {
-          setNow(Date.now());
-          setPhase({ step: "analyzing", since: Date.now() });
-        },
-      );
-      setDone(res.summary ?? { dog_id: res.dog_id });
+      const type = file.type || "video/mp4";
+      // 1. Presigned S3 URL, 2. upload straight to S3, 3. hand the S3 key to the pipeline.
+      const { url, key } = await postJSON<{ url: string; key: string }>("/api/upload/presign", { dog_id: id, content_type: type, size: file.size });
+      await putToS3(url, new File([file], file.name, { type }), (pct) => setPhase({ step: "uploading", pct }));
+      setNow(Date.now());
+      setPhase({ step: "analyzing", since: Date.now(), label: "Starting analysis" });
+      let job = await postJSON<UploadJob>("/api/upload", {
+        dog_id: id, key, day, content_type: type, size: file.size,
+        name: dogId === "__new" ? newName.trim() : undefined,
+      });
+      // 4. Poll the upload record in Mongo until the pipeline finishes.
+      const started = Date.now();
+      while (["uploaded", "queued", "processing"].includes(job.status) && Date.now() - started < 20 * 60_000) {
+        setPhase({ step: "analyzing", since: started, label: LABELS[job.status] ?? "Analyzing" });
+        await sleep(3000);
+        job = await getJSON<UploadJob>(`/api/upload/${job.upload_id}`);
+      }
+      if (job.status === "failed") throw new Error(job.error || "Analysis failed.");
+      if (job.status === "done") setDone({ kind: "done", dog_id: job.dog_id, summary: job.summary });
+      else setDone({ kind: "waiting", dog_id: job.dog_id, message: job.message || "Video saved. Analysis runs when the pipeline server is connected." });
       dogs.reload();
       setFile(null);
       if (fileRef.current) fileRef.current.value = "";
@@ -148,10 +158,10 @@ function Upload() {
             <Button type="submit" loading={busy} disabled={!file || !id || tooBig}>
               {busy ? "Analyzing video" : "Upload and analyze"}
             </Button>
-            {phase.step === "uploading" && <span role="status" className="text-sm text-muted">Uploading {phase.pct}%</span>}
+            {phase.step === "uploading" && <span role="status" className="text-sm text-muted">Uploading to S3, {phase.pct}%</span>}
             {phase.step === "analyzing" && (
               <span role="status" className="text-sm text-muted">
-                Tracking and scoring, {Math.max(0, Math.round((now - phase.since) / 1000))} s. This usually takes a few minutes.
+                {phase.label}, {Math.max(0, Math.round((now - phase.since) / 1000))} s. This usually takes a few minutes.
               </span>
             )}
           </div>
@@ -159,18 +169,23 @@ function Upload() {
       </Card>
       <div className="mt-4 space-y-3">
         {error && <ErrorNote message={error} />}
-        {done && (
+        {done?.kind === "waiting" && (
+          <p role="status" className="rounded-xl bg-sand px-4 py-3 text-sm">
+            {done.message}
+          </p>
+        )}
+        {done?.kind === "done" && (
           <Card as="section">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-semibold">Scored {done.dog_id}</p>
-              {"handling_level" in done && <LevelChip level={done.handling_level} showLabel />}
+              {done.summary && <LevelChip level={done.summary.handling_level} showLabel />}
             </div>
-            {"handling_level" in done && (
+            {done.summary && (
               <dl className="mt-3 grid grid-cols-3 gap-2 text-sm sm:grid-cols-5">
                 {(["energy", "stress", "approachability", "confidence", "arousal_spikes"] as const).map((k) => (
                   <div key={k}>
                     <dt className="text-xs capitalize text-muted">{k === "arousal_spikes" ? "Spikes" : k}</dt>
-                    <dd className="font-semibold tabular-nums">{done[k]}</dd>
+                    <dd className="font-semibold tabular-nums">{done.summary![k]}</dd>
                   </div>
                 ))}
               </dl>
@@ -178,7 +193,7 @@ function Upload() {
             <Link href={`/dogs/${done.dog_id}`} className="mt-3 inline-block text-sm font-semibold text-forest hover:underline">Open the dog&apos;s page</Link>
           </Card>
         )}
-        <Source>Tracking with YOLO11 and camera-shake compensation. Scores saved to MongoDB Atlas, readings to Tiger Data.</Source>
+        <Source>Video uploads straight to Amazon S3. Tracking with YOLO11 and camera-shake compensation. Scores saved to MongoDB Atlas, readings to Tiger Data.</Source>
       </div>
     </div>
   );

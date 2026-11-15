@@ -1,16 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { Pool } from "pg";
 import { fail } from "@/lib/http";
-
-let pool: Pool | null = null;
+import { tiger } from "@/lib/tiger";
 
 // Reads the dog_daily continuous aggregate (Tiger Data / TimescaleDB) built from the dog_readings hypertable.
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/trend/[dogId]">) {
   const { dogId } = await ctx.params;
-  const url = process.env.TIGER_URL;
-  if (!url) return fail("Time series database is not configured.", 503);
+  const pool = tiger();
+  if (!pool) return fail("Time series database is not configured.", 503);
   try {
-    pool ??= new Pool({ connectionString: url, ssl: { rejectUnauthorized: false }, max: 3 });
     const { rows } = await pool.query(
       "SELECT bucket, avg_stress, avg_energy FROM dog_daily WHERE dog_id = $1 ORDER BY bucket",
       [dogId],

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { fail, safe } from "@/lib/http";
+import { db } from "@/lib/db";
+import { safe } from "@/lib/http";
 import { pipelineFetch } from "@/lib/pipeline";
 import { plain } from "@/lib/text";
 
@@ -14,24 +15,12 @@ type PipelineBias = {
   pipeline_scores: Record<string, Record<string, number>> & { identical: boolean };
 };
 
-// Bias report the pipeline produced by sending the same kennel video to Gemini with two different breed labels.
-// 404 means the pipeline hasn't run one for this dog; the client then offers the app's own check.
-export const GET = safe(async (_req: NextRequest, ctx: RouteContext<"/api/bias/[dogId]">) => {
-  const { dogId } = await ctx.params;
-  let res: Response;
-  try {
-    res = await pipelineFetch(`/bias/${encodeURIComponent(dogId)}`, { timeoutMs: 10_000 });
-  } catch {
-    return fail("The behavior pipeline isn't reachable right now.", 503);
-  }
-  if (res.status === 404) return NextResponse.json({ dog_id: dogId, available: false });
-  if (!res.ok) return fail(`Pipeline returned ${res.status}`, 502);
-
-  const b = (await res.json()) as PipelineBias;
+function shape(b: PipelineBias, source: "mongo" | "pipeline") {
   const keys = Object.keys(b.labels);
-  return NextResponse.json({
+  return {
     dog_id: b.dog_id,
     available: true,
+    source,
     model: b.model,
     runs_per_label: b.runs_per_label,
     sides: keys.map((k) => ({
@@ -47,5 +36,23 @@ export const GET = safe(async (_req: NextRequest, ctx: RouteContext<"/api/bias/[
     run_spread: b.comparison.max_run_spread,
     exceeds_noise: b.comparison.exceeds_run_noise,
     pipeline_identical: Boolean(b.pipeline_scores.identical),
-  });
+  };
+}
+
+// Bias report the pipeline produced by sending the same kennel video to Gemini with two different breed labels.
+// Read from Mongo `bias_checks` (copied from the pipeline by scripts/import-bias.ts) so it works when deployed.
+// The live pipeline is only a fallback. `available: false` means neither has one; the page then offers the app's own check.
+export const GET = safe(async (_req: NextRequest, ctx: RouteContext<"/api/bias/[dogId]">) => {
+  const { dogId } = await ctx.params;
+  const stored = await (await db()).collection("bias_checks").findOne({ dog_id: dogId }, { projection: { _id: 0 } });
+  if (stored) return NextResponse.json(shape(stored as unknown as PipelineBias, "mongo"));
+
+  let res: Response;
+  try {
+    res = await pipelineFetch(`/bias/${encodeURIComponent(dogId)}`, { timeoutMs: 5_000 });
+  } catch {
+    return NextResponse.json({ dog_id: dogId, available: false });
+  }
+  if (!res.ok) return NextResponse.json({ dog_id: dogId, available: false });
+  return NextResponse.json(shape((await res.json()) as PipelineBias, "pipeline"));
 });
