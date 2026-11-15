@@ -11,6 +11,7 @@ const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] 
   { href: "/dogs", label: "Dogs", roles: ["staff", "vet"] },
   { href: "/match", label: "Match Board", familyLabel: "My Match", roles: ["staff", "vet", "family"] },
   { href: "/intake", label: "Family Intake", roles: ["staff", "vet", "family"] },
+  { href: "/bias-test", label: "Bias test", roles: ["staff", "vet", "family"] },
 ];
 
 export function Nav() {

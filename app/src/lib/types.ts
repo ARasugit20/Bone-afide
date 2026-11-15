@@ -15,6 +15,7 @@ export interface Dog {
   needs: string[]; // e.g. "no cats yet"
   photo?: string;
   expert_reviewed: boolean;
+  updated_at?: string; // ISO; set by the pipeline when present
 }
 
 export type Pet = "cats" | "dogs" | "small";

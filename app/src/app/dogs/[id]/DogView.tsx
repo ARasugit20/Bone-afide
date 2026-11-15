@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
-import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge } from "@/components/ui";
+import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge, UpdatedAt } from "@/components/ui";
 import type { Dog } from "@/lib/types";
 import { getJSON, LEVELS, needsReview, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
@@ -63,6 +63,7 @@ export function DogView() {
             <p className="text-sm text-muted">
               Day {d.day} at the shelter · {d.expert_reviewed ? "Reviewed by the behavior team" : "Awaiting behavior team review"}
             </p>
+            <UpdatedAt iso={d.updated_at} />
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
             <Link

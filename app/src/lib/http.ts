@@ -15,7 +15,16 @@ export function safe<A extends unknown[]>(fn: (...args: A) => Promise<Response>)
     } catch (err) {
       unstable_rethrow(err); // let Next's own control-flow errors (e.g. prerender bail-out) through
       console.error("[api]", err);
-      return fail((err as Error).message);
+      return friendly((err as Error).message);
     }
   };
+}
+
+// Upstream AI errors arrive as raw JSON blobs; turn the common ones into something a person can act on.
+function friendly(message: string) {
+  if (/RESOURCE_EXHAUSTED|"code":\s*429/.test(message))
+    return fail("The AI is at its free-tier limit right now — wait about a minute and try again.", 429);
+  if (/UNAVAILABLE|DEADLINE_EXCEEDED|"code":\s*50[34]/.test(message))
+    return fail("The AI service is busy right now — please try again in a moment.", 503);
+  return fail(message);
 }

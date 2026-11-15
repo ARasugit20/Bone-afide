@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PawIcon } from "@/components/Nav";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
-import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge } from "@/components/ui";
+import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge, UpdatedAt } from "@/components/ui";
 import type { Dog, Rental } from "@/lib/types";
 import { LEVELS, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
@@ -123,6 +123,7 @@ export function PassportView() {
 
       <footer className="pb-4 text-center text-sm text-muted">
         <p className="font-semibold text-ink">Behavior measured over {d.day} {d.day === 1 ? "day" : "days"}. Breed never recorded.</p>
+        <UpdatedAt iso={d.updated_at} className="mt-1 block" />
         <p className="mt-1 text-xs">Bonafide · judge the dog, not the label · Decision support, not a diagnosis.</p>
       </footer>
     </article>

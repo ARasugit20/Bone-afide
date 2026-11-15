@@ -75,6 +75,12 @@ export function TrendBadge({ trend }: { trend: Dog["trend"] }) {
   );
 }
 
+export function UpdatedAt({ iso, className = "" }: { iso?: string; className?: string }) {
+  if (!iso) return null;
+  const when = new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return <span className={`text-xs text-muted ${className}`}>Last updated {when}</span>;
+}
+
 export function ReviewBadge({ dog }: { dog: Dog }) {
   if (needsReview(dog)) {
     return (

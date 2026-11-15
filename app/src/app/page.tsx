@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Gate } from "@/components/AuthProvider";
+import { SystemStatus } from "@/components/SystemStatus";
 import { Button, Card, ErrorNote, LevelChip } from "@/components/ui";
 import { STAFF_ONLY } from "@/lib/access";
 import type { Dog, Family, HandlingLevel, Match } from "@/lib/types";
@@ -119,6 +120,20 @@ function Dashboard() {
             ))}
           </ol>
         </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <Link href="/bias-test" className="group">
+          <Card className="h-full bg-gradient-to-br from-white to-[#fdeee4] transition group-hover:-translate-y-0.5 group-hover:border-clay/40">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay">Bias test</p>
+            <h2 className="mt-1 font-display text-2xl font-semibold">Same dog. Two labels. Watch the AI change its mind.</h2>
+            <p className="mt-2 text-sm text-muted">
+              We ask a general AI about one dog twice — once with a breed label, once with another. Our behavior scores don&apos;t move, because they never see breed.
+            </p>
+            <span className="mt-4 inline-block text-sm font-bold text-clay-dark group-hover:underline">Run the bias test →</span>
+          </Card>
+        </Link>
+        <SystemStatus />
       </section>
     </div>
   );
