@@ -1,4 +1,4 @@
-# Unleashed — behavior pipeline
+# Bone-a-find — behavior pipeline
 
 Measures shelter-dog behavior from kennel video motion (never breed) and produces
 handling levels (Green/Yellow/Orange/Red) and plain-English needs. All pipeline code

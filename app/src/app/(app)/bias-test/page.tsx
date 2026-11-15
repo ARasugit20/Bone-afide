@@ -185,7 +185,7 @@ function PipelineReport({ dog, r }: { dog: Dog; r: Extract<PipelineBias, { avail
       </div>
 
       <Card as="section">
-        <SectionTitle title="Scores from video" sub="Bonafide scores and Gemini ratings for the same video, by label used." />
+        <SectionTitle title="Scores from video" sub="Bone-a-find scores and Gemini ratings for the same video, by label used." />
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-muted">
             <tr>
@@ -196,7 +196,7 @@ function PipelineReport({ dog, r }: { dog: Dog; r: Extract<PipelineBias, { avail
             </tr>
           </thead>
           <tbody className="border-t border-line">
-            <tr><th scope="rowgroup" colSpan={4} className="pb-1 pt-3 text-left text-xs font-semibold text-muted">Bonafide scores</th></tr>
+            <tr><th scope="rowgroup" colSpan={4} className="pb-1 pt-3 text-left text-xs font-semibold text-muted">Bone-a-find scores</th></tr>
             {SCORES.map((x) => (
               <tr key={x.key} className="border-t border-line">
                 <th scope="row" className="py-2 text-left font-normal">{x.label}</th>
@@ -223,7 +223,7 @@ function PipelineReport({ dog, r }: { dog: Dog; r: Extract<PipelineBias, { avail
             ? "Scores don't change with the label because breed is never an input."
             : "Pipeline scores differed between runs. Check the pipeline output."}
         </p>
-        <Source className="mt-2">Ratings from {r.model} on the same video. Report produced by the Bonafide pipeline.</Source>
+        <Source className="mt-2">Ratings from {r.model} on the same video. Report produced by the Bone-a-find pipeline.</Source>
       </Card>
     </div>
   );

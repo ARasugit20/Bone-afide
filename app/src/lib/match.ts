@@ -12,6 +12,53 @@ export interface PairScore {
   reasons: string[];
 }
 
+// Maps a not_suited_for phrase to a family condition that should be avoided. Each
+// rule: does this family trigger the phrase? If so, that pairing is penalized (or
+// blocked). Phrases come from the pipeline's config/fit_rules.json.
+const NOT_SUITED_RULES: { match: RegExp; triggers: (f: Family) => boolean; reason: (name: string) => string; block?: boolean }[] = [
+  {
+    match: /young children|young kids|small kids/i,
+    triggers: (f) => f.kids === "young",
+    reason: (name) => `${name} is not suited to homes with very young children right now`,
+    block: true,
+  },
+  {
+    match: /first-time owner|without a trainer/i,
+    triggers: (f) => f.experience <= 0,
+    reason: (name) => `${name} needs an owner with some handling experience right now`,
+  },
+  {
+    match: /multi-pet|other pets|busy/i,
+    triggers: (f) => f.other_pets.length > 0,
+    reason: (name) => `${name} needs a calmer home without other pets until stress settles`,
+  },
+  {
+    match: /doorway|gate|secure/i,
+    triggers: (f) => f.home === "apartment",
+    reason: (name) => `${name} needs a home with a secure entry, not a shared doorway, for now`,
+  },
+  {
+    match: /immediately social|expecting an? .*social/i,
+    triggers: () => true,
+    reason: (name) => `${name} warms up slowly, so plan for a patient introduction`,
+  },
+];
+
+// Returns [reasons, blocked] for the dog's not_suited_for list against this family.
+function notSuitedConflicts(dog: Dog, family: Family): { reasons: string[]; blocked: boolean } {
+  const reasons: string[] = [];
+  let blocked = false;
+  for (const phrase of dog.not_suited_for ?? []) {
+    for (const rule of NOT_SUITED_RULES) {
+      if (rule.match.test(phrase) && rule.triggers(family)) {
+        reasons.push(rule.reason(dog.name));
+        if (rule.block) blocked = true;
+      }
+    }
+  }
+  return { reasons, blocked };
+}
+
 function petConflict(dog: Dog, family: Family): string | null {
   const needs = dog.needs.map((n) => n.toLowerCase());
   for (const pet of family.other_pets) {
@@ -41,7 +88,15 @@ export function scorePair(dog: Dog, family: Family): PairScore {
     reasons.push(pet);
   }
 
+  // Grounded not_suited_for rules: block hard ones (very young children), heavily
+  // penalize the rest so the Hungarian matcher avoids those pairings.
+  const ns = notSuitedConflicts(dog, family);
+  if (ns.blocked) blocked = true;
+  const notSuitedPenalty = ns.reasons.length * 30;
+  for (const r of ns.reasons) if (!reasons.includes(r)) reasons.push(r);
+
   let score = 55;
+  score -= notSuitedPenalty;
   if (family.experience > need) score += 5;
 
   const gap = Math.abs(dog.energy - ENERGY_TARGET[family.activity]);

@@ -55,6 +55,8 @@ class Settings:
     blur_rel_threshold: float
     camera_compensation: bool
     close_area_frac: float
+    # Pose (SuperAnimal) integration; optional, off by default.
+    pose_enabled: bool
     # API auth (optional Cognito JWT; off by default)
     require_auth: bool
     cognito_user_pool_id: Optional[str]
@@ -89,6 +91,7 @@ def load_settings() -> Settings:
         blur_rel_threshold=float(_get("BLUR_REL_THRESHOLD", "0.4")),
         camera_compensation=_get("CAMERA_COMPENSATION", "1") not in ("0", "false", "False"),
         close_area_frac=float(_get("CLOSE_AREA_FRAC", "0.08")),
+        pose_enabled=_get("POSE_ENABLED", "0") in ("1", "true", "True"),
         require_auth=_get("REQUIRE_AUTH", "0") in ("1", "true", "True"),
         cognito_user_pool_id=_get("COGNITO_USER_POOL_ID"),
         cognito_app_client_id=_get("COGNITO_APP_CLIENT_ID"),

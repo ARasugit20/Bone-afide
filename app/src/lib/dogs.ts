@@ -64,6 +64,7 @@ export function normalizeDog(raw: unknown): Dog | null {
     ...(Array.isArray(r.fit_notes) ? { fit_notes: strings(r.fit_notes) } : {}),
     ...(Array.isArray(r.not_suited_for) ? { not_suited_for: strings(r.not_suited_for) } : {}),
     handler: normalizeHandler(r.handler, handling_level),
+    ...(r.pose && typeof r.pose === "object" ? { pose: r.pose as Dog["pose"] } : {}),
     expert_reviewed: r.expert_reviewed === true,
     ...(updated && !isNaN(updated.getTime()) ? { updated_at: updated.toISOString() } : {}),
   };

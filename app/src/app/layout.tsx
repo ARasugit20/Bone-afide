@@ -6,9 +6,20 @@ import "./globals.css";
 const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"] });
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 
+const DESCRIPTION =
+  "Shelter matching from behavior scored on kennel video. Breed is never an input.";
+
 export const metadata: Metadata = {
-  title: "Bonafide",
-  description: "Shelter matching from behavior scored on kennel video. Breed is never an input.",
+  title: { default: "Bone-a-find", template: "%s | Bone-a-find" },
+  description: DESCRIPTION,
+  applicationName: "Bone-a-find",
+  openGraph: {
+    title: "Bone-a-find",
+    description: DESCRIPTION,
+    siteName: "Bone-a-find",
+    type: "website",
+  },
+  twitter: { card: "summary", title: "Bone-a-find", description: DESCRIPTION },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

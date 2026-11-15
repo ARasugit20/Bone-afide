@@ -3,7 +3,7 @@ import { Doodles } from "./decor";
 import { CountUp, Reveal, RevealItem } from "./motion";
 
 const STATS = [
-  { to: 28, suffix: "%", text: "of surrenders are behavior mismatches — the dog and the home just didn't fit." },
+  { to: 28, suffix: "%", text: "of surrenders are behavior mismatches, the dog and the home just didn't fit." },
   { to: 27, suffix: "%", text: "of housing-related surrenders come from breed or size bans." },
   { to: 3, suffix: "×", text: "longer shelter stay, from a single label on a kennel card." },
 ];

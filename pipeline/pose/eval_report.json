@@ -1,0 +1,242 @@
+{
+  "june": {
+    "viewpoint": "oblique",
+    "config": "june_p_soff_a0_b0.9",
+    "seconds": 130.6,
+    "features": {
+      "posture_pct": {
+        "standing": 25.0,
+        "sitting": 0.0,
+        "lying": 75.0
+      },
+      "tail_height_median": -0.517,
+      "tail_height_iqr": 1.436,
+      "head_height_median": 0.184,
+      "head_height_iqr": 0.175,
+      "mean_confidence": 0.348,
+      "frames_used": 29,
+      "frames_total": 40,
+      "backline_coverage": 0.725,
+      "posture_frames": 12,
+      "viewpoint": "oblique"
+    },
+    "metrics": {
+      "detection_rate": 0.975,
+      "backline_coverage": 0.725,
+      "mean_confidence": 0.348,
+      "jitter": 0.0124,
+      "half_clip_consistency": 0.235,
+      "posture_accuracy": "pending"
+    },
+    "passes": {
+      "detection_rate": true,
+      "backline_coverage": true,
+      "mean_confidence": false,
+      "jitter": true,
+      "half_clip_consistency": false,
+      "posture_accuracy": null
+    },
+    "readiness": 60,
+    "version": "superanimal_quadruped_hrnet_w32/pose-1"
+  },
+  "kacy": {
+    "viewpoint": "side",
+    "config": "kacy_p_soff_a0_b0.9",
+    "seconds": 139.9,
+    "features": {
+      "posture_pct": {
+        "standing": 77.8,
+        "sitting": 0.0,
+        "lying": 22.2
+      },
+      "tail_height_median": -0.041,
+      "tail_height_iqr": 1.923,
+      "head_height_median": 0.184,
+      "head_height_iqr": 1.88,
+      "mean_confidence": 0.443,
+      "frames_used": 36,
+      "frames_total": 40,
+      "backline_coverage": 0.9,
+      "posture_frames": 36,
+      "viewpoint": "side"
+    },
+    "metrics": {
+      "detection_rate": 0.975,
+      "backline_coverage": 0.9,
+      "mean_confidence": 0.443,
+      "jitter": 0.0115,
+      "half_clip_consistency": 0.26,
+      "posture_accuracy": "pending"
+    },
+    "passes": {
+      "detection_rate": true,
+      "backline_coverage": true,
+      "mean_confidence": false,
+      "jitter": true,
+      "half_clip_consistency": false,
+      "posture_accuracy": null
+    },
+    "readiness": 60,
+    "version": "superanimal_quadruped_hrnet_w32/pose-1"
+  },
+  "katie": {
+    "viewpoint": "side",
+    "config": "katie_p_soff_a0_b0.9",
+    "seconds": 159.0,
+    "features": {
+      "posture_pct": {
+        "standing": 69.2,
+        "sitting": 3.8,
+        "lying": 26.9
+      },
+      "tail_height_median": 0.422,
+      "tail_height_iqr": 0.416,
+      "head_height_median": 0.594,
+      "head_height_iqr": 0.119,
+      "mean_confidence": 0.392,
+      "frames_used": 40,
+      "frames_total": 40,
+      "backline_coverage": 1.0,
+      "posture_frames": 26,
+      "viewpoint": "side"
+    },
+    "metrics": {
+      "detection_rate": 1.0,
+      "backline_coverage": 1.0,
+      "mean_confidence": 0.392,
+      "jitter": 0.0152,
+      "half_clip_consistency": 0.05,
+      "posture_accuracy": "pending"
+    },
+    "passes": {
+      "detection_rate": true,
+      "backline_coverage": true,
+      "mean_confidence": false,
+      "jitter": true,
+      "half_clip_consistency": true,
+      "posture_accuracy": null
+    },
+    "readiness": 60,
+    "version": "superanimal_quadruped_hrnet_w32/pose-1"
+  },
+  "kinder": {
+    "viewpoint": "oblique",
+    "config": "kinder_p_soff_a0_b0.9",
+    "seconds": 86.1,
+    "features": {
+      "posture_pct": {
+        "standing": 40.0,
+        "sitting": 0.0,
+        "lying": 60.0
+      },
+      "tail_height_median": -0.133,
+      "tail_height_iqr": 1.162,
+      "head_height_median": 0.78,
+      "head_height_iqr": 1.008,
+      "mean_confidence": 0.338,
+      "frames_used": 16,
+      "frames_total": 23,
+      "backline_coverage": 0.696,
+      "posture_frames": 10,
+      "viewpoint": "oblique"
+    },
+    "metrics": {
+      "detection_rate": 1.0,
+      "backline_coverage": 0.696,
+      "mean_confidence": 0.338,
+      "jitter": 0.1103,
+      "half_clip_consistency": 0.012,
+      "posture_accuracy": "pending"
+    },
+    "passes": {
+      "detection_rate": true,
+      "backline_coverage": true,
+      "mean_confidence": false,
+      "jitter": false,
+      "half_clip_consistency": true,
+      "posture_accuracy": null
+    },
+    "readiness": 60,
+    "version": "superanimal_quadruped_hrnet_w32/pose-1"
+  },
+  "luna": {
+    "viewpoint": "oblique",
+    "config": "luna_p_soff_a0_b0.9",
+    "seconds": 143.2,
+    "features": {
+      "posture_pct": {
+        "standing": 77.8,
+        "sitting": 16.7,
+        "lying": 5.6
+      },
+      "tail_height_median": -0.968,
+      "tail_height_iqr": 3.0,
+      "head_height_median": -0.869,
+      "head_height_iqr": 1.958,
+      "mean_confidence": 0.291,
+      "frames_used": 22,
+      "frames_total": 40,
+      "backline_coverage": 0.55,
+      "posture_frames": 18,
+      "viewpoint": "oblique"
+    },
+    "metrics": {
+      "detection_rate": 0.875,
+      "backline_coverage": 0.55,
+      "mean_confidence": 0.291,
+      "jitter": 0.0854,
+      "half_clip_consistency": 0.092,
+      "posture_accuracy": "pending"
+    },
+    "passes": {
+      "detection_rate": true,
+      "backline_coverage": true,
+      "mean_confidence": false,
+      "jitter": false,
+      "half_clip_consistency": true,
+      "posture_accuracy": null
+    },
+    "readiness": 60,
+    "version": "superanimal_quadruped_hrnet_w32/pose-1"
+  },
+  "max": {
+    "viewpoint": "side",
+    "config": "max_p_soff_a0_b0.9",
+    "seconds": 101.3,
+    "features": {
+      "posture_pct": {
+        "standing": 55.6,
+        "sitting": 22.2,
+        "lying": 22.2
+      },
+      "tail_height_median": 0.059,
+      "tail_height_iqr": 0.366,
+      "head_height_median": 0.329,
+      "head_height_iqr": 0.689,
+      "mean_confidence": 0.427,
+      "frames_used": 10,
+      "frames_total": 22,
+      "backline_coverage": 0.455,
+      "posture_frames": 9,
+      "viewpoint": "side"
+    },
+    "metrics": {
+      "detection_rate": 0.864,
+      "backline_coverage": 0.455,
+      "mean_confidence": 0.427,
+      "jitter": 0.2435,
+      "half_clip_consistency": 0.041,
+      "posture_accuracy": "pending"
+    },
+    "passes": {
+      "detection_rate": true,
+      "backline_coverage": false,
+      "mean_confidence": false,
+      "jitter": false,
+      "half_clip_consistency": true,
+      "posture_accuracy": null
+    },
+    "readiness": 60,
+    "version": "superanimal_quadruped_hrnet_w32/pose-1"
+  }
+}

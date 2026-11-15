@@ -84,8 +84,8 @@ export function LabelProof() {
                 <thead>
                   <tr className="text-muted-ink">
                     <th scope="col" className="pb-2 text-left font-semibold">Score</th>
-                    <th scope="col" className="pb-2 text-right font-semibold">“pit bull”</th>
-                    <th scope="col" className="pb-2 text-right font-semibold">“Lab mix”</th>
+                    <th scope="col" className="pb-2 text-right font-semibold">"pit bull"</th>
+                    <th scope="col" className="pb-2 text-right font-semibold">"Lab mix"</th>
                   </tr>
                 </thead>
                 <tbody>

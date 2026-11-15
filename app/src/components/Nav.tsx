@@ -11,8 +11,12 @@ const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] 
   { href: "/", label: "Overview", roles: ["staff", "vet"] },
   { href: "/dogs", label: "Dogs", roles: ["staff", "vet"] },
   { href: "/match", label: "Match board", familyLabel: "My match", roles: ["staff", "vet", "family"] },
-  { href: "/intake", label: "Family intake", roles: ["staff", "vet", "family"] },
+  { href: "/care", label: "Care", roles: ["staff", "vet"] },
+  { href: "/food", label: "Food", roles: ["staff", "vet"] },
+  { href: "/playgroups", label: "Playgroups", roles: ["staff", "vet"] },
   { href: "/volunteers", label: "Volunteers", roles: ["staff"] },
+  { href: "/alumni", label: "Alumni", roles: ["staff", "vet", "family"] },
+  { href: "/intake", label: "Family intake", roles: ["staff", "vet", "family"] },
   { href: "/bias-test", label: "Bias check", roles: ["staff", "vet", "family"] },
 ];
 
@@ -25,11 +29,11 @@ export function Nav() {
   return (
     <header className="glass-nav z-20 lg:sticky lg:top-0 print:hidden">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:h-16 lg:flex-nowrap lg:py-0 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 rounded-full text-ink" aria-label="Bonafide home">
+        <Link href="/" className="flex items-center gap-2 rounded-full text-ink" aria-label="Bone-a-find home">
           <span className="grid size-8 place-items-center rounded-full bg-logo text-on-dark">
             <PawIcon className="size-4" />
           </span>
-          <span className="font-display text-lg font-semibold tracking-tight">Bonafide</span>
+          <span className="font-display text-lg font-semibold tracking-tight">Bone-a-find</span>
         </Link>
         <nav aria-label="Main" className="no-scrollbar order-3 -mx-1 flex w-full gap-1 overflow-x-auto px-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:order-none lg:w-auto lg:flex-1 lg:[mask-image:none]">
           <Suspense fallback={<Links path={null} />}>

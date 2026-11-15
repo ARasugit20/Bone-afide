@@ -26,8 +26,21 @@ export interface Dog {
   fit_notes?: string[]; // short factual lines, e.g. "Calm in 2 of 4 sessions."
   not_suited_for?: string[]; // e.g. "homes with very young children"
   handler?: Handler; // who can handle this dog day to day
+  pose?: Pose; // optional SuperAnimal pose summary; off by default (POSE_ENABLED)
   expert_reviewed: boolean;
   updated_at?: string; // ISO; set by the pipeline when present
+}
+/** Optional SuperAnimal pose summary written by pipeline/pose (off by default). */
+export interface Pose {
+  available: boolean;
+  keypoints_url?: string | null;
+  notes?: string | null;
+  posture_pct?: Partial<Record<"lying" | "standing" | "sitting", number>> | null;
+  tail_h?: number | null;
+  head_h?: number | null;
+  readiness?: number;
+  confidence?: number;
+  version?: string;
 }
 
 export type EventType = "calm" | "jump" | "acceleration" | "reversal";
@@ -173,4 +186,85 @@ export interface Match {
   family_id: string;
   score: number;
   reasons: string[];
+}
+
+// --- Care hub (Task 4) ---
+export type CareType = "nail_trim" | "bath" | "vaccines" | "vet_checkup" | "flea_tick";
+export interface CareRecord {
+  dog_id: string;
+  type: CareType;
+  last_date: string; // ISO date
+  interval_days: number;
+  notes?: string;
+}
+export interface CareItemView extends CareRecord {
+  label: string;
+  next_due: string; // ISO date
+  days_until: number; // negative = overdue
+  overdue: boolean;
+}
+
+// --- Food and supplies (Task 5) ---
+export interface Diet {
+  dog_id: string;
+  food_type: string;
+  grams_per_day: number;
+  allergies: string[];
+  notes?: string;
+}
+export interface InventoryItem {
+  sku: string;
+  name: string;
+  unit: string; // e.g. "kg", "cans"
+  on_hand: number;
+  daily_use: number; // units consumed per day across the shelter
+  low_stock_days: number; // alert threshold in days of stock
+}
+export interface FoodHelp {
+  name: string;
+  address?: string;
+  phone?: string;
+  url: string;
+  kind?: string; // "food bank", "pantry", "donation"
+}
+export interface FoodHelpJob {
+  run_id: string;
+  status: "running" | "done" | "failed" | "timed_out";
+  started_at: string;
+  finished_at?: string;
+  found?: number;
+  error?: string;
+}
+
+// --- Playgroups (Task 7) ---
+export interface Playgroup {
+  dog_ids: string[];
+  reasons: string[];
+}
+export interface Playdate {
+  playdate_id: string;
+  dog_ids: string[];
+  scheduled_for: string; // ISO
+  volunteer_id?: string;
+  volunteer_name?: string;
+  created_at: string;
+}
+
+// --- Alumni feed (Task 8) ---
+export interface AlumniPost {
+  post_id: string;
+  dog_id: string;
+  dog_name: string;
+  family_name?: string;
+  text: string;
+  photo?: string;
+  created_at: string;
+}
+
+// --- Vet Q&A (Task 6) ---
+export interface VetAnswer {
+  question: string;
+  answer: string;
+  model: string; // display label of the model that wrote it
+  created_at: string;
 }

@@ -1,4 +1,4 @@
-# Unleashed Behavior Pipeline — API
+# Bone-a-find Behavior Pipeline — API
 
 FastAPI service exposing the behavior pipeline to the frontend.
 
@@ -395,9 +395,45 @@ curl http://localhost:8000/passport/luna-01
 }
 ```
 
-## Pose seam (Feature 8)
+## Pose (SuperAnimal) integration
 
-Every dog doc carries an optional `pose` field, default `{"available": false}`.
-Aditya's pose module (on the `pose-prototype` branch) may later set
-`{"available": true, "keypoints_url": "...", "notes": "..."}`. The pipeline never
-clobbers an existing `pose` object. No other pose behavior exists yet.
+The SuperAnimal-Quadruped pose stack lives under `pipeline/pose/` with its OWN venv
+and requirements (DeepLabCut 3.0.2, Python 3.10). It is fully isolated: the main
+pipeline venv never imports DeepLabCut, and pose is off by default.
+
+Every dog doc carries a `pose` field, default `{"available": false}`. When the pose
+run is executed and pushed, the field also includes the contract keys plus richer
+measurements:
+
+```json
+{
+  "available": true,
+  "keypoints_url": null,
+  "notes": "Lying 62 percent of the clip.",
+  "posture_pct": {"lying": 62, "standing": 30, "sitting": 8},
+  "tail_h": -0.1, "head_h": 0.2, "readiness": 82, "confidence": 0.74, "version": "..."
+}
+```
+
+The pipeline never clobbers an existing `pose` object. The app reads `pose` only when
+`POSE_ENABLED=true` and `readiness >= 70` (see `app/src/lib/pose.ts`), and then only
+nudges energy/stress by at most 15 percent; handling level, approachability, and needs
+are never touched by pose.
+
+### Running pose (separate venv, Python 3.10)
+
+```bash
+cd pipeline/pose
+python3.10 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt            # DeepLabCut + SuperAnimal
+python run_pose.py --video ../data/raw/katie.mp4 --out output --fps 2 --max-seconds 30
+python pose_features.py --pose output/katie_pose.json
+python push_pose.py                         # writes dogs.<id>.pose in Mongo (needs MONGODB_URI)
+```
+
+### Skeleton overlay on the annotated video
+
+When `POSE_ENABLED=1` is set for the main pipeline and a pose JSON is passed to
+`annotate_clip(..., pose_json=...)`, a SuperAnimal skeleton is drawn on each frame. The
+overlay reads only the pose JSON with OpenCV; it has no DeepLabCut dependency and is a
+no-op when pose is off or the JSON is missing.

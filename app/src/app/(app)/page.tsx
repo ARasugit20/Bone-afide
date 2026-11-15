@@ -32,6 +32,8 @@ function Overview() {
   const dogs = useApi<Dog[]>("/api/dogs");
   const families = useApi<Family[]>("/api/families");
   const board = useApi<Board>("/api/match");
+  const care = useApi<{ dogs: { dog_id: string; name: string; items: { label: string; overdue: boolean }[] }[] }>("/api/care");
+  const food = useApi<{ inventory: { name: string; low: boolean }[] }>("/api/food");
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
 
@@ -112,7 +114,12 @@ function Overview() {
         </section>
 
         <div className="order-1 space-y-6 lg:order-none">
-          <NeedsAttention dogs={list} loading={dogs.loading} />
+          {(food.data?.inventory ?? []).some((i) => i.low) && (
+            <Link href="/food" className="block rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 hover:border-amber-400">
+              {(food.data?.inventory ?? []).filter((i) => i.low).length} food {(food.data?.inventory ?? []).filter((i) => i.low).length === 1 ? "item is" : "items are"} low on stock
+            </Link>
+          )}
+          <NeedsAttention dogs={list} loading={dogs.loading} care={care.data?.dogs ?? []} />
           <LevelSummary dogs={list} loading={dogs.loading} />
         </div>
       </div>
@@ -159,10 +166,19 @@ function attentionFor(d: Dog): Attention | null {
   return null;
 }
 
-function NeedsAttention({ dogs, loading }: { dogs: Dog[]; loading: boolean }) {
-  const items = dogs
-    .map(attentionFor)
-    .filter((x): x is Attention => x !== null)
+function NeedsAttention({ dogs, loading, care = [] }: { dogs: Dog[]; loading: boolean; care?: { dog_id: string; items: { label: string; overdue: boolean }[] }[] }) {
+  const overdueByDog = new Map(care.map((c) => [c.dog_id, c.items.filter((i) => i.overdue).map((i) => i.label)]));
+  const base = dogs.map(attentionFor).filter((x): x is Attention => x !== null);
+  // Overdue care items also need attention (only for dogs not already flagged higher).
+  const flagged = new Set(base.map((a) => a.dog.dog_id));
+  const careItems: Attention[] = dogs
+    .map((d) => {
+      const overdue = overdueByDog.get(d.dog_id) ?? [];
+      if (!overdue.length || flagged.has(d.dog_id)) return null;
+      return { dog: d, reason: `${overdue[0]} overdue`, action: "Open care", rank: 2.5 } as Attention;
+    })
+    .filter((x): x is Attention => x !== null);
+  const items = [...base, ...careItems]
     .sort((a, b) => a.rank - b.rank || LEVEL_RANK[b.dog.handling_level] - LEVEL_RANK[a.dog.handling_level] || a.dog.name.localeCompare(b.dog.name));
   const shown = items.slice(0, 6);
 

@@ -1,4 +1,4 @@
-# Unleashed Behavior Pipeline — Evaluation
+# Bone-a-find Behavior Pipeline — Evaluation
 
 Reproduce all numbers below with:
 
@@ -122,7 +122,7 @@ contract.**
 
 ---
 
-# MODEL CARD — Unleashed behavior pipeline
+# MODEL CARD — Bone-a-find behavior pipeline
 
 ## Purpose
 

@@ -145,9 +145,88 @@ export function DogView() {
           </Card>
 
           <NotesCard dog={d} name={d.name} />
+          <VetAskBox dog={d} name={name} />
         </div>
       </div>
     </div>
+  );
+}
+
+/** Grounded vet-adjacent Q&A: answers only from this dog's record, always ends with
+ *  the medical disclaimer, refuses dosing/diagnosis, labels the model, and offers a
+ *  TinyFish "find a vet nearby" search. */
+function VetAskBox({ dog, name }: { dog: Dog; name: string }) {
+  const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ question: string; answer: string; model: string } | null>(null);
+  const [vetJob, setVetJob] = useState<{ status: string } | null>(null);
+  const [vets, setVets] = useState<{ name: string; url: string; address?: string }[]>([]);
+
+  async function ask(e: React.FormEvent) {
+    e.preventDefault();
+    const question = q.trim();
+    if (!question) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await postJSON<{ answer: string; model: string }>("/api/vet-ask", { dog_id: dog.dog_id, question });
+      setResult({ question, ...res });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function findVet() {
+    setVetJob({ status: "running" });
+    try {
+      await postJSON("/api/vet-nearby");
+      const poll = async (): Promise<void> => {
+        const d = await getJSON<{ job: { status: string } | null; results: { name: string; url: string; address?: string }[] }>("/api/vet-nearby");
+        setVetJob(d.job);
+        setVets(d.results ?? []);
+        if (d.job?.status === "running") setTimeout(poll, 5000);
+      };
+      await poll();
+    } catch (err) {
+      setError((err as Error).message);
+      setVetJob(null);
+    }
+  }
+
+  return (
+    <Card as="section">
+      <SectionTitle title="Ask a vet question" sub={`Answers use only ${name}'s record. Not a diagnosis.`} />
+      <form onSubmit={ask} className="mt-3 flex gap-2">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Is ${name} due for any care?`} aria-label="Vet question" className={`${FIELD} min-w-0 flex-1`} />
+        <Button type="submit" variant="secondary" loading={loading} disabled={!q.trim()}>Ask</Button>
+      </form>
+      {error && <div className="mt-3"><ErrorNote message={error} /></div>}
+      {result && (
+        <div className="mt-4 rounded-xl bg-canvas p-4">
+          <p className="text-xs text-muted">{result.question}</p>
+          <p className="mt-1 text-sm leading-relaxed">{result.answer}</p>
+          <Source className="mt-2">Written by {result.model}</Source>
+        </div>
+      )}
+      <div className="mt-4 border-t border-line pt-4">
+        <Button variant="secondary" onClick={findVet} loading={vetJob?.status === "running"}>
+          {vetJob?.status === "running" ? "Searching" : "Find a vet nearby"}
+        </Button>
+        {vets.length > 0 && (
+          <ul className="mt-3 space-y-1 text-sm">
+            {vets.map((v, i) => (
+              <li key={i}>
+                <a href={v.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-forest hover:underline">{v.name}</a>
+                {v.address && <span className="text-muted"> {v.address}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
   );
 }
 

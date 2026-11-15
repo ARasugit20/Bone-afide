@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "How it works",
-  description: "How Bonafide turns kennel video into behavior scores and shelter matches.",
+  description: "How Bone-a-find turns kennel video into behavior scores and shelter matches.",
 };
 
 const FLOW = [

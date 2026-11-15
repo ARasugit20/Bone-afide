@@ -46,8 +46,14 @@ def annotate_clip(
     fps: Optional[float] = None,
     speed_factor: float = 1.0,
     settings: Optional[Settings] = None,
+    pose_json: Optional[str] = None,
 ) -> str:
-    """Write an annotated MP4 to ``out_path``. Returns the path."""
+    """Write an annotated MP4 to ``out_path``. Returns the path.
+
+    When ``settings.pose_enabled`` is true and ``pose_json`` points to a pose run's
+    output, a SuperAnimal skeleton is drawn on each frame. This is import-safe and a
+    no-op otherwise.
+    """
     settings = settings or load_settings()
     info, frame_iter = sample_frames(video, fps=fps, settings=settings)
     frames = list(frame_iter)
@@ -55,6 +61,11 @@ def annotate_clip(
 
     jumps = jump_frame_flags(tracks)
     centers = _smooth_centers_px(tracks, w, h)
+
+    pose_data = None
+    if getattr(settings, "pose_enabled", False) and pose_json:
+        from .pose_overlay import load_pose
+        pose_data = load_pose(pose_json)
 
     out_fps = (fps if fps is not None else settings.sample_fps)
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
@@ -94,6 +105,13 @@ def annotate_clip(
         for k, (name, val) in enumerate(score_lines):
             cv2.putText(frame, f"{name}: {val}", (8, 45 + k * 22),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (220, 220, 220), 1)
+
+        # Optional SuperAnimal skeleton overlay (POSE_ENABLED + pose_json present).
+        if pose_data is not None:
+            from .pose_overlay import draw_skeleton
+            src_w = info.src_width or w
+            src_h = info.src_height or h
+            draw_skeleton(frame, pose_data, sf.timestamp_s, src_w, src_h, w, h)
 
         # JUMP flash.
         if i < len(jumps) and jumps[i]:

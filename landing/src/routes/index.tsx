@@ -11,9 +11,9 @@ import { Passport } from "@/components/landing/Passport";
 import { Proof } from "@/components/landing/Proof";
 import { IMAGES } from "@/components/landing/images";
 
-const TITLE = "Bonafide — Judge the dog, not the label";
+const TITLE = "Bone-a-find";
 const DESC =
-  "Bonafide measures shelter dogs' real behavior from kennel video over several days — never breed — and matches the whole shelter to waiting families at once.";
+  "Bone-a-find measures shelter dogs' real behavior from kennel video over several days, never breed, and matches the whole shelter to waiting families at once.";
 
 export const Route = createFileRoute("/")({
   head: () => ({

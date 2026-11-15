@@ -175,7 +175,7 @@ function MatchViz() {
 
 const NOTES = [
   { day: "Day 2", who: "Staff", icon: Heart, text: "Shy with tall visitors, warms up fast with treats." },
-  { day: "Day 4", who: "Vet", icon: Stethoscope, text: "Ear discomfort treated — stress scores re-checked." },
+  { day: "Day 4", who: "Vet", icon: Stethoscope, text: "Ear discomfort treated, stress scores re-checked." },
 ];
 
 export function Bento() {
@@ -219,7 +219,7 @@ export function Bento() {
             className="md:col-span-2"
             kicker="Handling levels"
             title="Who each dog suits"
-            detail="Levels describe the home a dog needs today — and they move as the dog does."
+            detail="Levels describe the home a dog needs today, and they move as the dog does."
           >
             <ul className="space-y-2.5">
               {LEVELS.map((l) => (
@@ -235,7 +235,7 @@ export function Bento() {
             className="md:col-span-2"
             kicker="Any camera"
             title="Camera-shake proof"
-            detail="Works on volunteers' handheld phone video — we stabilize before we measure."
+            detail="Works on volunteers' handheld phone video, we stabilize before we measure."
           >
             <div className="relative overflow-hidden rounded-[20px] bg-line">
               <div className="shaky">
@@ -287,6 +287,21 @@ export function Bento() {
             <a href="#label-proof" className="mt-4 inline-flex items-center gap-1.5 rounded-md text-body font-bold text-forest hover:underline">
               See the test <ArrowRight className="size-4" aria-hidden="true" />
             </a>
+          </Tile>
+
+          <Tile
+            className="md:col-span-4"
+            kicker="The whole shelter"
+            title="Everything in one place"
+            detail="Behavior from video, an evidence timeline, welfare alerts, a passport QR page, plus care, food, playgroups, and volunteer assignments."
+          >
+            <ul className="grid grid-cols-2 gap-x-6 gap-y-2 text-body text-muted-ink sm:grid-cols-3">
+              {["Evidence timeline", "Welfare alerts", "Whole-shelter matching", "Passport QR", "Care and vaccines", "Food and supplies", "Playgroups", "Volunteer levels", "Alumni updates"].map((f) => (
+                <li key={f} className="flex items-center gap-1.5">
+                  <Check className="size-4 shrink-0 text-grass" aria-hidden="true" /> {f}
+                </li>
+              ))}
+            </ul>
           </Tile>
         </Reveal>
       </div>

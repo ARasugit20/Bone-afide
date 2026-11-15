@@ -15,12 +15,12 @@ const STEPS = [
   {
     icon: Activity,
     title: "Behavior scores",
-    text: "Energy, stress, approachability, confidence and arousal — measured across several days, not one bad afternoon.",
+    text: "Energy, stress, approachability, confidence and arousal, measured across several days, not one bad afternoon.",
   },
   {
     icon: Users,
     title: "Whole-shelter match",
-    text: "Every dog and every waiting family, matched at once, so the best fit wins — not the first in line.",
+    text: "Every dog and every waiting family, matched at once, so the best fit wins, not the first in line.",
   },
 ];
 

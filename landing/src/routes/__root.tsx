@@ -81,15 +81,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Bonafide — Judge the dog, not the label" },
+      { title: "Bone-a-find" },
       {
         name: "description",
-        content: "Behavior-based matching for shelter dogs, measured from kennel video — never breed.",
+        content: "Behavior-based matching for shelter dogs, measured from kennel video. Never breed.",
       },
-      { property: "og:title", content: "Bonafide — Judge the dog, not the label" },
+      { property: "og:title", content: "Bone-a-find" },
       {
         property: "og:description",
-        content: "Behavior-based matching for shelter dogs, measured from kennel video — never breed.",
+        content: "Behavior-based matching for shelter dogs, measured from kennel video. Never breed.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

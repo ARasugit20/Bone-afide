@@ -130,6 +130,118 @@ export async function saveRunResult(d: Db, dogId: string, result: unknown, listi
   return { found: listings.length, kept: keep.length, fetched_at: fetched_at.toISOString(), source: listingsUrl };
 }
 
+// --- Food help (pet food banks / pantries) ------------------------------------
+export const DEFAULT_FOODHELP_URL = "https://www.google.com/search?q=pet+food+bank+pantry+Tempe+Phoenix+AZ";
+const FOODHELP_GOAL =
+  "List up to 8 pet food banks, pet food pantries, or pet food donation programs near Tempe or Phoenix, Arizona. " +
+  "For each return JSON {name,address,phone,url,kind}. kind is one of 'food bank','pantry','donation'. " +
+  "url must be the organization's own page. Return ONLY a JSON array.";
+
+type FoodHelpRaw = { name?: string; address?: string; phone?: string; url?: string; kind?: string };
+
+function findFoodHelp(v: unknown): FoodHelpRaw[] | null {
+  if (typeof v === "string") {
+    const m = v.match(/\[[\s\S]*\]/);
+    if (!m) return null;
+    try { return findFoodHelp(JSON.parse(m[0])); } catch { return null; }
+  }
+  if (Array.isArray(v)) {
+    if (v.length && v.every((x) => x && typeof x === "object" && ("name" in x || "url" in x))) return v as FoodHelpRaw[];
+    for (const x of v) { const hit = findFoodHelp(x); if (hit) return hit; }
+    return null;
+  }
+  if (v && typeof v === "object") {
+    for (const x of Object.values(v)) { const hit = findFoodHelp(x); if (hit) return hit; }
+  }
+  return null;
+}
+
+export async function startFoodHelpRun(url = DEFAULT_FOODHELP_URL): Promise<string> {
+  const queued = await fetch(`${API}/automation/run-async`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ url, goal: FOODHELP_GOAL }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  const q = (await queued.json().catch(() => ({}))) as { run_id?: string; error?: { message?: string } };
+  if (!queued.ok || !q.run_id) throw new Error(q.error?.message || `TinyFish returned ${queued.status}`);
+  return q.run_id;
+}
+
+/** Save a finished food-help run's results into Mongo (replaces the saved set). */
+export async function saveFoodHelpResult(d: Db, result: unknown, url = DEFAULT_FOODHELP_URL): Promise<number> {
+  const items = findFoodHelp(result);
+  if (!items) throw new Error("The agent didn't return any food help results. Try again later.");
+  const fetched_at = new Date();
+  const keep = items.filter((x) => x.url && /^https?:\/\//.test(x.url));
+  if (keep.length) {
+    await d.collection("food_help").deleteMany({});
+    await d.collection("food_help").insertMany(
+      keep.map((x) => ({
+        name: x.name ?? "Pet food resource",
+        address: x.address ?? "",
+        phone: x.phone ?? "",
+        kind: x.kind ?? "",
+        url: x.url,
+        source: url,
+        fetched_at,
+      })),
+    );
+  }
+  return keep.length;
+}
+
+// --- Vet nearby ---------------------------------------------------------------
+export const DEFAULT_VET_URL = "https://www.google.com/search?q=veterinarian+clinic+Tempe+Phoenix+AZ";
+const VET_GOAL =
+  "List up to 6 veterinary clinics near Tempe or Phoenix, Arizona. For each return JSON " +
+  "{name,address,phone,url}. url must be the clinic's own page. Return ONLY a JSON array.";
+
+type VetRaw = { name?: string; address?: string; phone?: string; url?: string };
+
+function findVets(v: unknown): VetRaw[] | null {
+  if (typeof v === "string") {
+    const m = v.match(/\[[\s\S]*\]/);
+    if (!m) return null;
+    try { return findVets(JSON.parse(m[0])); } catch { return null; }
+  }
+  if (Array.isArray(v)) {
+    if (v.length && v.every((x) => x && typeof x === "object" && ("name" in x || "url" in x))) return v as VetRaw[];
+    for (const x of v) { const hit = findVets(x); if (hit) return hit; }
+    return null;
+  }
+  if (v && typeof v === "object") {
+    for (const x of Object.values(v)) { const hit = findVets(x); if (hit) return hit; }
+  }
+  return null;
+}
+
+export async function startVetRun(url = DEFAULT_VET_URL): Promise<string> {
+  const queued = await fetch(`${API}/automation/run-async`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ url, goal: VET_GOAL }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  const q = (await queued.json().catch(() => ({}))) as { run_id?: string; error?: { message?: string } };
+  if (!queued.ok || !q.run_id) throw new Error(q.error?.message || `TinyFish returned ${queued.status}`);
+  return q.run_id;
+}
+
+export async function saveVetResult(d: Db, result: unknown, url = DEFAULT_VET_URL): Promise<number> {
+  const items = findVets(result);
+  if (!items) throw new Error("The agent didn't return any clinics. Try again later.");
+  const keep = items.filter((x) => x.url && /^https?:\/\//.test(x.url));
+  const fetched_at = new Date();
+  if (keep.length) {
+    await d.collection("vets").deleteMany({});
+    await d.collection("vets").insertMany(
+      keep.map((x) => ({ name: x.name ?? "Veterinary clinic", address: x.address ?? "", phone: x.phone ?? "", url: x.url, source: url, fetched_at })),
+    );
+  }
+  return keep.length;
+}
+
 /** Script helper: runs the agent to completion (blocking) and saves the result. */
 export async function gatherRentals(d: Db, dogId: string, listingsUrl = DEFAULT_LISTINGS_URL, log: (m: string) => void = () => {}): Promise<RentalRun> {
   const runId = await startAgentRun(listingsUrl);
