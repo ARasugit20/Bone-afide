@@ -129,7 +129,7 @@ function Upload() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader back={{ href: "/", label: "Overview" }} title="Upload kennel video" sub="The pipeline tracks the dog, scores its behavior and finds the families that fit." />
+      <PageHeader back={{ href: "/overview", label: "Overview" }} title="Upload kennel video" sub="The pipeline tracks the dog, scores its behavior and finds the families that fit." />
 
       {run.state === "done" ? (
         <Result job={run.job} seconds={run.seconds} onAgain={() => setRun({ state: "idle" })} />

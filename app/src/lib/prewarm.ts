@@ -21,7 +21,7 @@ export function subscribeWarm(cb: () => void) {
 
 const DEMO_DOG = "luna-01";
 // Visiting each page once makes the dev server compile it, so first clicks on stage are instant.
-const PAGES = ["/", "/dogs", `/dogs/${DEMO_DOG}`, "/match", "/intake", "/bias-test", `/passport/${DEMO_DOG}`];
+const PAGES = ["/overview", "/dogs", `/dogs/${DEMO_DOG}`, "/match", "/intake", "/bias-test", `/passport/${DEMO_DOG}`];
 
 async function load<T>(url: string) {
   const data = await getJSON<T>(url);

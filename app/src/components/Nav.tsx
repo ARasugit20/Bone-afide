@@ -9,7 +9,7 @@ import { useAuth } from "./AuthProvider";
 import { prewarm } from "@/lib/prewarm";
 
 const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] }[] = [
-  { href: "/", label: "Overview", roles: ["staff", "vet"] },
+  { href: "/overview", label: "Overview", roles: ["staff", "vet"] },
   { href: "/dogs", label: "Dogs", roles: ["staff", "vet"] },
   { href: "/match", label: "Match board", familyLabel: "My match", roles: ["staff", "vet", "family"] },
   { href: "/care", label: "Care", roles: ["staff", "vet"] },
@@ -30,7 +30,7 @@ export function Nav() {
   return (
     <header className="glass-nav z-20 lg:sticky lg:top-0 print:hidden">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:h-16 lg:flex-nowrap lg:py-0 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 rounded-full text-ink" aria-label="Bone-a-find home">
+        <Link href="/overview" className="flex items-center gap-2 rounded-full text-ink" aria-label="Bone-a-find home">
           <Image src="/logo.png" alt="" width={32} height={32} className="size-8 rounded-full" priority />
           <span className="font-display text-lg font-semibold tracking-tight">Bone-a-find</span>
         </Link>
@@ -50,7 +50,7 @@ function ActiveLinks() {
 
 function Links({ path }: { path: string | null }) {
   const { role } = useAuth();
-  const active = (href: string) => path !== null && (href === "/" ? path === "/" : path.startsWith(href));
+  const active = (href: string) => path !== null && path.startsWith(href);
   return LINKS.filter((l) => l.roles.includes(role)).map((l) => (
     <Link
       key={l.href}
