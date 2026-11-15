@@ -40,6 +40,7 @@ function Upload() {
   const dogs = useApi<Dog[]>("/api/dogs");
   const [dogId, setDogId] = useState("");
   const [newId, setNewId] = useState("");
+  const [newName, setNewName] = useState("");
   const [day, setDay] = useState(1);
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
@@ -55,7 +56,8 @@ function Upload() {
   }, [phase.step]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const id = dogId === "__new" ? newId.trim().toLowerCase() : dogId;
+  // The pipeline saves new dogs only under the upload- prefix.
+  const id = dogId === "__new" ? (newId.trim() ? `upload-${newId.trim().toLowerCase().replace(/^upload-/, "")}` : "") : dogId;
   const tooBig = file ? file.size > MAX_MB * 1024 * 1024 : false;
 
   function pickDog(value: string) {
@@ -75,6 +77,7 @@ function Upload() {
       form.set("video", file);
       form.set("dog_id", id);
       form.set("day", String(day));
+      if (dogId === "__new" && newName.trim()) form.set("name", newName.trim());
       const res = await send(
         form,
         (pct) => setPhase({ step: "uploading", pct }),
@@ -114,11 +117,20 @@ function Upload() {
             </select>
           </label>
           {dogId === "__new" && (
-            <label className="block">
-              <span className="text-sm font-semibold">New dog ID</span>
-              <input value={newId} onChange={(e) => setNewId(e.target.value)} placeholder="bella-01" className={`mt-1.5 ${FIELD}`} required pattern="[a-z0-9][a-z0-9\-]{1,40}" />
-              <span className="mt-1 block text-xs text-muted">Lowercase letters, numbers and dashes.</span>
-            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-semibold">Name</span>
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Bella" maxLength={40} className={`mt-1.5 ${FIELD}`} required />
+              </label>
+              <label className="block">
+                <span className="text-sm font-semibold">Dog ID</span>
+                <span className="mt-1.5 flex items-center rounded-xl border border-line bg-surface focus-within:border-forest focus-within:ring-2 focus-within:ring-forest/20">
+                  <span className="pl-3 text-sm text-muted">upload-</span>
+                  <input value={newId} onChange={(e) => setNewId(e.target.value)} placeholder="bella-01" required pattern="[a-z0-9][a-z0-9\-]{1,30}" className="w-full min-w-0 rounded-xl bg-transparent py-2.5 pr-3 text-sm outline-none" />
+                </span>
+                <span className="mt-1 block text-xs text-muted">Lowercase letters, numbers and dashes.</span>
+              </label>
+            </div>
           )}
           <label className="block">
             <span className="text-sm font-semibold">Day in shelter</span>

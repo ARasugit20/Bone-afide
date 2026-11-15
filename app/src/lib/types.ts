@@ -15,6 +15,7 @@ export interface Dog {
   needs: string[]; // e.g. "no cats yet"
   photo?: string; // signed S3 URL (thumbnail)
   video_url?: string; // signed S3 URL (annotated tracking video)
+  media_status?: "pending" | "complete"; // pipeline S3 upload state after /analyze
   behavior_report?: string;
   behavior_report_at?: string;
   behavior_report_provider?: string; // "bedrock" when written by Amazon Bedrock

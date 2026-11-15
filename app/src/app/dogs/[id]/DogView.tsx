@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { TrackingVideo } from "@/components/TrackingVideo";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
@@ -24,6 +24,17 @@ export function DogView() {
   const auth = useAuth();
   const [signing, setSigning] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
+  const mediaPending = dog.data?.media_status === "pending" && !dog.data?.video_url;
+  const { setData } = dog;
+
+  // Right after an upload the pipeline sends the video to S3 in the background. Check until it's there.
+  useEffect(() => {
+    if (!mediaPending) return;
+    const t = setInterval(() => {
+      getJSON<Dog>(`/api/dogs/${id}`).then(setData, () => {});
+    }, 5000);
+    return () => clearInterval(t);
+  }, [mediaPending, id, setData]);
 
   async function signOff() {
     setSigning(true);
@@ -89,6 +100,11 @@ export function DogView() {
             <SectionTitle title="Tracking video" sub="YOLO11 tracking with camera-shake compensation." />
             {d.video_url ? (
               <TrackingVideo src={d.video_url} poster={d.photo} events={d.events ?? []} />
+            ) : mediaPending ? (
+              <p role="status" className="flex items-center gap-2 rounded-xl bg-canvas px-4 py-6 text-sm text-muted">
+                <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-forest" />
+                Uploading the tracking video to Amazon S3. This page updates when it&apos;s ready.
+              </p>
             ) : (
               <Empty title="No tracking video yet" body="Upload a kennel video to create one." action={<ButtonLink href="/upload" variant="secondary">Upload kennel video</ButtonLink>} />
             )}
