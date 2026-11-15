@@ -13,8 +13,12 @@ export function ClosingCta() {
       <Reveal className="container-page relative text-center">
         <RevealItem>
           <h2 id="cta-title" className="mx-auto max-w-[48rem] text-display text-on-dark">
-            Every dog deserves to be seen <Accent tone="tennis">for who they are.</Accent>
+            See Bone-a-find <Accent tone="tennis">in action.</Accent>
           </h2>
+          <p className="mx-auto mt-6 max-w-[34rem] text-lead text-on-dark/75">
+            Replacing labels with evidence, so shelter teams can understand change over time and
+            make more informed placement decisions.
+          </p>
         </RevealItem>
         <RevealItem className="mt-10">
           <Button asChild variant="brand" size="pill">

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import type { Role } from "@/lib/types";
-import { AccountControl, useAuth } from "./AuthProvider";
+import { useAuth } from "./AuthProvider";
 import { prewarm } from "@/lib/prewarm";
 
 const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] }[] = [
@@ -39,9 +39,6 @@ export function Nav() {
             <ActiveLinks />
           </Suspense>
         </nav>
-        <div className="ml-auto flex items-center lg:ml-0">
-          <AccountControl />
-        </div>
       </div>
     </header>
   );

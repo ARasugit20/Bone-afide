@@ -2,7 +2,7 @@ import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion
 import { Button } from "@/components/ui/button";
 import { Accent, Eyebrow, LevelChip } from "./bits";
 import { BouncingBall, Hills } from "./decor";
-import { IMAGES } from "./images";
+import { APP_URL, IMAGES } from "./images";
 import { EASE_UI } from "./motion";
 
 const SCORES = [
@@ -34,19 +34,20 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: EASE_UI }}
         >
-          <Eyebrow tone="tennis">Behavior, measured, never breed</Eyebrow>
+          <Eyebrow tone="tennis">Behavior intelligence for animal shelters</Eyebrow>
           <h1 className="mt-5 text-display text-on-dark">
-            Judge the dog, <span className="block"><Accent tone="tennis">not the label.</Accent></span>
+            Understand the dog <span className="block"><Accent tone="tennis">in front of you.</Accent></span>
           </h1>
-          <p className="mt-6 max-w-[30rem] text-lead text-on-dark/75">
-            We measure real behavior from kennel video and match every dog to the family where they'll thrive.
+          <p className="mt-6 max-w-[32rem] text-lead text-on-dark/75">
+            Bone-a-find turns everyday shelter video into evidence-backed behavioral observations, helping
+            teams track welfare, coordinate care, and make more informed matches.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Button asChild variant="brand" size="pill">
-              <a href="#demo">See the demo</a>
+              <a href={APP_URL}>Open the app</a>
             </Button>
             <Button asChild variant="outlineDark" size="pill">
-              <a href="#how-it-works">How it works</a>
+              <a href="#how-it-works">See how it works</a>
             </Button>
           </div>
         </motion.div>
