@@ -124,6 +124,35 @@ curl http://localhost:8000/dogs/luna-01/trend
 }
 ```
 
+## 4b. `GET /dogs/{dog_id}/events`
+
+Behavior evidence timeline: timestamped events detected from the dog's motion, for
+building a scrubbable timeline next to the annotated video. `404` if the dog is
+unknown; returns an empty `events` list if none were detected.
+
+Each event is `{type, start_s, end_s, label}`. `type` is one of `jump`, `reversal`,
+`acceleration`, `calm`. `start_s`/`end_s` are seconds from clip start. `label` is a
+short plain-English phrase (guardrail-safe: never "aggressive"/"dangerous"/"menace",
+never breed). Same-type events closer than 1 s are merged; at most 12 events (the
+longest) are returned, sorted by `start_s`.
+
+```bash
+curl http://localhost:8000/dogs/luna-01/events
+```
+
+Real response for luna-01 (Lola):
+
+```json
+{
+  "dog_id": "luna-01",
+  "events": [
+    {"type": "jump", "start_s": 1.85, "end_s": 2.13, "label": "Jumped up at the fence"},
+    {"type": "acceleration", "start_s": 3.7, "end_s": 3.75, "label": "Rushed toward the front"},
+    {"type": "acceleration", "start_s": 7.33, "end_s": 7.58, "label": "Rushed toward the front"}
+  ]
+}
+```
+
 ## 5. `POST /analyze`
 
 Multipart upload: analyze one clip end-to-end (scores, level, needs, Mongo + Tiger

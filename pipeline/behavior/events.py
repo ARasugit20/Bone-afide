@@ -137,8 +137,46 @@ def extract_events(tracks: list[FrameTrack]) -> list[dict]:
             events.append({"type": "calm", "start_s": _round(st), "end_s": _round(en),
                            "label": label})
 
-    events.sort(key=lambda e: (e["start_s"], e["type"]))
+    events = merge_and_cap(events)
     # Guardrail: every label must be clean.
     for ev in events:
         sanitize(ev["label"], _path="event.label")
     return events
+
+
+MERGE_GAP_S = 1.0   # same-type events closer than this are merged into one
+MAX_EVENTS = 12     # keep at most this many (the longest), sorted by start
+
+
+def merge_and_cap(events: list[dict]) -> list[dict]:
+    """Merge adjacent same-type events (gap < MERGE_GAP_S) and cap to MAX_EVENTS.
+
+    Merging: events are grouped by type; within a type, any run whose consecutive
+    gap (next.start - prev.end) is under MERGE_GAP_S collapses into one event with
+    start = first start, end = last end, and the first event's label. If more than
+    MAX_EVENTS remain, keep the MAX_EVENTS longest (by duration), then sort by start.
+    """
+    if not events:
+        return []
+
+    by_type: dict[str, list[dict]] = {}
+    for e in events:
+        by_type.setdefault(e["type"], []).append(e)
+
+    merged: list[dict] = []
+    for etype, evs in by_type.items():
+        evs = sorted(evs, key=lambda e: e["start_s"])
+        cur = dict(evs[0])
+        for e in evs[1:]:
+            if e["start_s"] - cur["end_s"] < MERGE_GAP_S:
+                cur["end_s"] = max(cur["end_s"], e["end_s"])  # extend
+            else:
+                merged.append(cur)
+                cur = dict(e)
+        merged.append(cur)
+
+    if len(merged) > MAX_EVENTS:
+        merged = sorted(merged, key=lambda e: e["end_s"] - e["start_s"], reverse=True)[:MAX_EVENTS]
+
+    merged.sort(key=lambda e: (e["start_s"], e["type"]))
+    return merged

@@ -54,3 +54,41 @@ def test_event_labels_are_guardrail_clean():
 
 def test_empty_tracks_no_events():
     assert extract_events([]) == []
+
+
+def test_merge_collapses_near_same_type_events():
+    from behavior.events import merge_and_cap
+    # 4 acceleration events 0.05 s apart -> merged into 1 spanning all of them.
+    evs = [
+        {"type": "acceleration", "start_s": 1.00, "end_s": 1.05, "label": "Rushed toward the front"},
+        {"type": "acceleration", "start_s": 1.10, "end_s": 1.15, "label": "Rushed toward the front"},
+        {"type": "acceleration", "start_s": 1.20, "end_s": 1.25, "label": "Rushed toward the front"},
+        {"type": "acceleration", "start_s": 1.30, "end_s": 1.35, "label": "Rushed toward the front"},
+    ]
+    out = merge_and_cap(evs)
+    assert len(out) == 1
+    assert out[0]["start_s"] == 1.00
+    assert out[0]["end_s"] == 1.35
+    assert out[0]["type"] == "acceleration"
+
+
+def test_merge_keeps_distinct_when_gap_large():
+    from behavior.events import merge_and_cap
+    evs = [
+        {"type": "jump", "start_s": 0.0, "end_s": 0.3, "label": "Jumped up at the fence"},
+        {"type": "jump", "start_s": 2.0, "end_s": 2.3, "label": "Jumped up at the fence"},  # gap 1.7 s
+    ]
+    assert len(merge_and_cap(evs)) == 2
+
+
+def test_cap_keeps_12_longest_sorted_by_start():
+    from behavior.events import merge_and_cap
+    # 15 well-separated jumps of increasing duration -> keep 12 longest, sorted by start.
+    evs = [{"type": "jump", "start_s": i * 5.0, "end_s": i * 5.0 + (i + 1) * 0.1,
+            "label": "Jumped up at the fence"} for i in range(15)]
+    out = merge_and_cap(evs)
+    assert len(out) == 12
+    starts = [e["start_s"] for e in out]
+    assert starts == sorted(starts)
+    # the three shortest (i=0,1,2) should have been dropped
+    assert all(e["start_s"] >= 15.0 for e in out)

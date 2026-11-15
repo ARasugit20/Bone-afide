@@ -397,6 +397,44 @@ def cmd_run_all(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reextract_events(args: argparse.Namespace) -> int:
+    """Re-run tracking per clip, recompute events, and update ONLY the events field
+    in Mongo for owned dogs. Does not touch scores, media, or history.
+    """
+    settings = load_settings()
+    from . import store_mongo
+    from .events import extract_events
+
+    demo_path = Path(args.config) if args.config else (PIPELINE_ROOT / "data" / "demo_dogs.json")
+    cfg = json.loads(demo_path.read_text())
+    for clip in cfg.get("clips", []):
+        if clip.get("excluded"):
+            continue
+        dog_id = clip["dog_id"]
+        video = clip["video"]
+        if not Path(video).is_absolute():
+            video = str(PIPELINE_ROOT / video)
+        try:
+            r = analyze_one(video, dog_id, int(clip.get("day", 1)),
+                            camera_id=clip.get("camera_id"),
+                            speed_factor=float(clip.get("speed_factor", 1.0)),
+                            settings=settings)
+            events = extract_events(r["tracks"])
+        except Exception as e:
+            print(f"  {dog_id}: analyze failed: {type(e).__name__}: {e}")
+            continue
+        updated = False
+        if settings.mongo_uri:
+            col = store_mongo.get_collection(settings)
+            if store_mongo.is_owned(dog_id):
+                res = col.update_one({"dog_id": dog_id},
+                                     {"$set": {"events": events,
+                                               "updated_at": store_mongo._now_iso()}})
+                updated = res.matched_count > 0
+        print(f"  {dog_id}: {len(events)} events  mongo_updated={updated}")
+    return 0
+
+
 def cmd_refresh_urls(args: argparse.Namespace) -> int:
     """Regenerate 7-day presigned URLs for each owned dog's thumbnail + video."""
     settings = load_settings()
@@ -457,6 +495,10 @@ def build_parser() -> argparse.ArgumentParser:
                       help="split each clip into N equal time segments -> days 1..N "
                            "(per-clip 'segments' in demo_dogs.json overrides this)")
     p_ra.set_defaults(func=cmd_run_all)
+
+    p_re = sub.add_parser("re-extract-events", help="recompute events only; update Mongo events field")
+    p_re.add_argument("--config", default=None, help="path to demo_dogs.json (default data/demo_dogs.json)")
+    p_re.set_defaults(func=cmd_reextract_events)
 
     p_ru = sub.add_parser("refresh-urls", help="regenerate 7-day presigned media URLs in Mongo")
     p_ru.add_argument("--config", default=None, help="path to demo_dogs.json (default data/demo_dogs.json)")
