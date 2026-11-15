@@ -8,6 +8,11 @@ import type { Role } from "@/lib/types";
 import { useAuth } from "./AuthProvider";
 import { prewarm } from "@/lib/prewarm";
 
+// Clicking the brand logo/name leaves the dashboard for the public marketing
+// landing site. Configurable so local/dev can point elsewhere; defaults to the
+// production apex, matching the host-redirect target in proxy.ts.
+const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL || "https://bone-a-find.us";
+
 const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] }[] = [
   { href: "/overview", label: "Overview", roles: ["staff", "vet"] },
   { href: "/dogs", label: "Dogs", roles: ["staff", "vet"] },
@@ -30,10 +35,10 @@ export function Nav() {
   return (
     <header className="glass-nav z-20 lg:sticky lg:top-0 print:hidden">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:h-16 lg:flex-nowrap lg:py-0 lg:px-8">
-        <Link href="/overview" className="flex items-center gap-2 rounded-full text-ink" aria-label="Bone-a-find home">
+        <a href={LANDING_URL} className="flex items-center gap-2 rounded-full text-ink" aria-label="Bone-a-find home">
           <Image src="/logo.png" alt="" width={32} height={32} className="size-8 rounded-full" priority />
           <span className="font-display text-lg font-semibold tracking-tight">Bone-a-find</span>
-        </Link>
+        </a>
         <nav aria-label="Main" className="no-scrollbar order-3 -mx-1 flex w-full gap-1 overflow-x-auto px-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:order-none lg:w-auto lg:flex-1 lg:[mask-image:none]">
           <Suspense fallback={<Links path={null} />}>
             <ActiveLinks />

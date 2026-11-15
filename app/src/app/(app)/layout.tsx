@@ -10,12 +10,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Nav />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-8 print:max-w-none print:p-0">{children}</main>
       <footer className="border-t border-line/70 print:hidden">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 text-xs text-muted sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p>Breed is never stored or shown. Decision support, not a diagnosis.</p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 text-xs text-muted sm:flex-row sm:items-start sm:justify-between sm:px-6 lg:px-8">
+          <p className="max-w-prose">Breed is never stored or shown. Decision support, not a diagnosis.</p>
+          <div className="flex flex-col items-start gap-3 sm:items-end">
             <Link href="/how-it-works" className="font-semibold hover:text-forest">How it works</Link>
-          </div>
-          <div className="flex justify-start sm:justify-end">
             <AccountControl />
           </div>
         </div>
