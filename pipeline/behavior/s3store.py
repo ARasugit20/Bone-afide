@@ -25,7 +25,17 @@ class S3Unavailable(RuntimeError):
 
 def _client(settings: Settings):
     import boto3
-    return boto3.client("s3", region_name=BUCKET_REGION)
+    from botocore.config import Config
+
+    # Pin the regional endpoint + SigV4 so presigned URLs point straight at the
+    # us-west-2 host and need no redirect (a generic endpoint yields a 307 whose
+    # target then rejects the signature with 403).
+    return boto3.client(
+        "s3",
+        region_name=BUCKET_REGION,
+        endpoint_url=f"https://s3.{BUCKET_REGION}.amazonaws.com",
+        config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+    )
 
 
 def available(settings: Optional[Settings] = None) -> bool:
