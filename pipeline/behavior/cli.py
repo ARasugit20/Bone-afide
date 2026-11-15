@@ -285,24 +285,51 @@ def cmd_run_all(args: argparse.Namespace) -> int:
             handling_level=level, trend=trend, needs=needs,
         )
 
-        # Write local summary always.
         out_dir = PIPELINE_ROOT / "data" / "out"
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / f"{dog_id}_day{day}.json").write_text(json.dumps(summary, indent=2))
+
+        # Thumbnail: clearest detected frame.
+        from .thumbnail import save_thumbnail
+        thumb_path = save_thumbnail(r["frames"], r["tracks"], str(out_dir / f"{dog_id}.jpg"))
+
+        # Annotated MP4.
+        from .annotate import annotate_clip
+        annotated_path = annotate_clip(
+            video, r["tracks"], scores, handling_level=level,
+            out_path=str(out_dir / f"{Path(video).stem}_annotated.mp4"),
+            speed_factor=speed_factor, settings=settings,
+        )
+
+        # S3 upload + presigned URLs (graceful if unavailable).
+        from . import s3store
+        photo_url = video_url = None
+        if s3store.available(settings):
+            if thumb_path:
+                photo_url = s3store.upload_and_presign(
+                    thumb_path, s3store.thumbnail_key(dog_id),
+                    content_type="image/jpeg", settings=settings)
+            video_url = s3store.upload_and_presign(
+                annotated_path, s3store.video_key(dog_id, day),
+                content_type="video/mp4", settings=settings)
+        else:
+            print("  [s3] no bucket/credentials; skipping media upload")
 
         # Write to Mongo if configured.
         wrote_mongo = False
         if settings.mongo_uri:
             try:
                 from . import store_mongo
-                store_mongo.upsert_summary(summary, settings=settings)
+                store_mongo.upsert_summary(summary, photo=photo_url, video_url=video_url,
+                                           settings=settings)
                 wrote_mongo = True
             except Exception as e:
                 print(f"  [mongo] write failed: {type(e).__name__}: {e}")
         else:
             print("  [mongo] MONGO_URI not set; skipping Mongo write")
 
-        print(f"  level={level}  needs={needs}  mongo={'yes' if wrote_mongo else 'no'}")
+        print(f"  level={level}  needs={needs}  mongo={'yes' if wrote_mongo else 'no'}"
+              f"  photo={'yes' if photo_url else 'no'}  video={'yes' if video_url else 'no'}")
         results.append((dog_id, level, needs, wrote_mongo))
 
     # Summary table.
@@ -310,6 +337,32 @@ def cmd_run_all(args: argparse.Namespace) -> int:
     print(f"{'dog_id':12} {'level':8} {'mongo':6} needs")
     for dog_id, level, needs, wrote in results:
         print(f"{dog_id:12} {level:8} {('yes' if wrote else 'no'):6} {'; '.join(needs)}")
+    return 0
+
+
+def cmd_refresh_urls(args: argparse.Namespace) -> int:
+    """Regenerate 7-day presigned URLs for each owned dog's thumbnail + video."""
+    settings = load_settings()
+    from . import s3store, store_mongo
+
+    if not s3store.available(settings):
+        print("[s3] no bucket/credentials; cannot refresh URLs")
+        return 1
+    if not settings.mongo_uri:
+        print("[mongo] MONGO_URI not set; cannot update docs")
+        return 1
+
+    demo_path = Path(args.config) if args.config else (PIPELINE_ROOT / "data" / "demo_dogs.json")
+    cfg = json.loads(demo_path.read_text())
+    for clip in cfg.get("clips", []):
+        if clip.get("excluded"):
+            continue
+        dog_id = clip["dog_id"]
+        day = int(clip.get("day", 1))
+        photo = s3store.presign_existing(s3store.thumbnail_key(dog_id), settings=settings)
+        video = s3store.presign_existing(s3store.video_key(dog_id, day), settings=settings)
+        store_mongo.set_media_urls(dog_id, photo=photo, video_url=video, settings=settings)
+        print(f"  {dog_id}: photo={'yes' if photo else 'no'} video={'yes' if video else 'no'}")
     return 0
 
 
@@ -344,6 +397,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_ra = sub.add_parser("run-all", help="analyze every clip in demo_dogs.json; write stores")
     p_ra.add_argument("--config", default=None, help="path to demo_dogs.json (default data/demo_dogs.json)")
     p_ra.set_defaults(func=cmd_run_all)
+
+    p_ru = sub.add_parser("refresh-urls", help="regenerate 7-day presigned media URLs in Mongo")
+    p_ru.add_argument("--config", default=None, help="path to demo_dogs.json (default data/demo_dogs.json)")
+    p_ru.set_defaults(func=cmd_refresh_urls)
 
     return parser
 
