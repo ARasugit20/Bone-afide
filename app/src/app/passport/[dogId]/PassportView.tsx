@@ -100,7 +100,7 @@ export function PassportView() {
 
       <Card className="print:break-inside-avoid print:shadow-none">
         <h2 className="font-display text-xl font-semibold">Rentals that welcome {name}</h2>
-        <p className="mb-3 text-sm text-muted">Pet-friendly listings with no breed restrictions.</p>
+        <p className="mb-3 text-sm text-muted">Pet-friendly listings. Breed is never recorded.</p>
         {rentals.loading ? (
           <Spinner label="Looking for welcoming homes…" />
         ) : rentals.data?.length ? (

@@ -3,7 +3,7 @@
 import { closeDb, db } from "../src/lib/db";
 
 const DOG_ID = "max-01";
-const URL_TO_SCRAPE = process.argv[2] || "https://www.apartments.com/tempe-az/";
+const URL_TO_SCRAPE = process.argv[2] || "https://www.apartments.com/tempe-az/pet-friendly-dog/";
 const GOAL =
   "List up to 8 apartment listings near Arizona State University Tempe. For each return JSON " +
   "{name,address,rent,pets_allowed,dog_weight_limit_lbs,breed_restrictions,pet_policy_text,url}. Return ONLY a JSON array.";
