@@ -16,7 +16,7 @@ export type Observation = {
   source: "pipeline";
   pipeline_version?: string;
   review_status: ReviewStatus;
-  review?: { reviewer: string; reviewed_at: string; original_label: string; corrected_label?: string; context?: string; note?: string };
+  review?: { reviewer: string; reviewed_at: string; review_status: ReviewStatus; original_label: string; corrected_label?: string; context?: string; note?: string };
 };
 
 export function observationId(dogId: string, day: number, event: { type: string; start_s: number; end_s: number }) {
@@ -34,7 +34,7 @@ export async function listObservations(d: Db, dogs: Dog[]) {
       ...(dog.video_url ? { video_url: dog.video_url } : {}), source: "pipeline" as const,
       pipeline_version: typeof dog.pipeline_version === "string" ? dog.pipeline_version : undefined,
       review_status: (review?.review_status ?? "unreviewed") as ReviewStatus, ...(review ? { review } : {}),
-    } satisfies Observation;
+    } as Observation;
   }));
 }
 

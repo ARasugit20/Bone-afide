@@ -140,7 +140,10 @@ def test_cors_localhost_allowed(client):
     assert r.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
 
-def test_trend(client):
+def test_trend(client, monkeypatch):
+    # This test exercises the configured Tiger path with a mocked store; the API
+    # returns 502 before consulting the mock when the backend is marked absent.
+    monkeypatch.setenv("TIGER_DSN", "postgresql://unit:unit@localhost/test")
     r = client.get("/dogs/luna-01/trend")
     assert r.status_code == 200
     body = r.json()
@@ -196,6 +199,11 @@ def test_analyze_upload_dog_is_owned_and_stored(client, monkeypatch):
     monkeypatch.setattr(store_mongo, "get_collection", lambda settings=None: type(
         "C", (), {"update_one": lambda self, *a, **k: None})())
     import behavior.store_tiger as tiger
+    # Exercise persistence with the mocked stores. Without these presence flags
+    # the route correctly skips persistence, so the test would only cover the
+    # unconfigured-backend path.
+    monkeypatch.setenv("MONGO_URI", "mongodb://unit:unit@localhost/test")
+    monkeypatch.setenv("TIGER_DSN", "postgresql://unit:unit@localhost/test")
     monkeypatch.setattr(tiger, "write_readings", lambda **k: None)
     monkeypatch.setattr(tiger, "refresh_daily", lambda *a, **k: None)
     monkeypatch.setattr(tiger, "compute_trend", lambda d, conn=None: "stable")

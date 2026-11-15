@@ -27,8 +27,9 @@ export const GET = safe(async (req: NextRequest) => {
     const contextBySession = new Map(contexts.map((c) => [String(c.session_id), String(c.context)]));
     const ordered = [...history].sort((a, b) => Number(a.day) - Number(b.day));
     const current = ordered.at(-1); const previous = ordered.at(-2);
+    const sessions: (Record<string, unknown> & { session_id: string; context: string })[] = ordered.map((s) => { const session_id = `${dog.dog_id}:day-${s.day}`; return { ...s, session_id, context: contextBySession.get(session_id) ?? "unspecified" }; });
     return { dog_id: dog.dog_id, name: dog.name, handling_level: dog.handling_level,
-      sessions: ordered.map((s) => { const session_id = `${dog.dog_id}:day-${s.day}`; return { ...s, session_id, context: contextBySession.get(session_id) ?? "unspecified" }; }),
+      sessions,
       observations: observations.filter((o) => o.dog_id === dog.dog_id), quality: qualitySummary(dog),
       session_change: previous && current ? compareSessions(previous, current) : [],
       interventions: await d.collection("behavior_interventions").find({ dog_id: dog.dog_id }, { projection: { _id: 0 } }).toArray(),

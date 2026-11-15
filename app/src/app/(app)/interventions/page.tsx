@@ -31,7 +31,7 @@ function Interventions() {
     <Card><label className="block max-w-sm text-sm">Dog<select value={dogId} onChange={(e) => setDogId(e.target.value)} className={`${field} mt-1`}>{dogs.map((d) => <option key={d.dog_id} value={d.dog_id}>{d.name}</option>)}</select></label></Card>
     <Card><h2 className="font-semibold">Record an intervention</h2><form action={create} className="mt-4 grid gap-3 sm:grid-cols-2">
       <label className="text-sm">Intervention<select className={field} name="type">{[["quieter_kennel", "Moved to quieter kennel"], ["enrichment", "Enrichment added"], ["foster_sleepover", "Foster / sleepover"], ["staff_interaction", "Staff interaction"], ["exercise_walk", "Exercise / walk"], ["medical_review", "Medical review"], ["training", "Training session"], ["housing_change", "Housing change"], ["other", "Other"]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      <label className="text-sm">Date/time<input className={field} name="occurred_at" type="datetime-local" required defaultValue={new Date().toISOString().slice(0, 16)} /></label>
+      <label className="text-sm">Date/time<input className={field} name="occurred_at" type="datetime-local" required /></label>
       <label className="text-sm">Staff member<input className={field} name="staff" placeholder="Shelter staff" /></label>
       <label className="text-sm">Related concern<input className={field} name="concern" placeholder="Optional behavior concern" /></label>
       <label className="text-sm">Context<select className={field} name="context"><option value="">Not recorded</option>{["kennel", "walk", "foster", "meet-and-greet", "play", "intake", "other"].map((v) => <option key={v}>{v}</option>)}</select></label>

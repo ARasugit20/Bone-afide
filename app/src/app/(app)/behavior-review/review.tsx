@@ -5,7 +5,7 @@ import { Button, Card, Empty, PageHeader } from "@/components/ui";
 import type { Dog } from "@/lib/types";
 import { getJSON } from "@/lib/ui";
 
-type Item = { observation_id: string; dog_id: string; dog_name: string; session_id: string; day: number; start_s: number; end_s: number; machine_label: string; confidence?: number; video_url?: string; review_status: string; review?: { reviewer: string; reviewed_at: string; corrected_label?: string; context?: string; note?: string } };
+type Item = { observation_id: string; dog_id: string; dog_name: string; session_id: string; day: number; start_s: number; end_s: number; machine_label: string; confidence?: number; video_url?: string; review_status: string; review?: { reviewer: string; reviewed_at: string; original_label: string; corrected_label?: string; context?: string; note?: string } };
 const field = "min-h-10 w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm";
 export function BehaviorReview() {
   const auth = useAuth();

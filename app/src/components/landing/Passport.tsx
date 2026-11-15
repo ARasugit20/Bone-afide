@@ -31,7 +31,7 @@ function Seal() {
         </defs>
         <circle cx="50" cy="50" r="46" fill="none" className="stroke-on-dark/40" strokeWidth="1" strokeDasharray="2 3" />
         <text className="fill-on-dark" style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 2.2 }}>
-          <textPath href="#seal-circle">BONAFIDE · BEHAVIOR VERIFIED ·</textPath>
+          <textPath href="#seal-circle">BONE-A-FIND · BEHAVIOR OBSERVED ·</textPath>
         </text>
       </svg>
       <PawMark className="size-8" />

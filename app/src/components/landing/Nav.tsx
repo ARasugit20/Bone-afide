@@ -18,7 +18,7 @@ export function Nav() {
           <span className="grid size-9 place-items-center rounded-full bg-logo text-on-dark">
             <PawMark className="size-5" />
           </span>
-          <span className="font-display text-h3 font-semibold tracking-tight">Bonafide</span>
+          <span className="font-display text-h3 font-semibold tracking-tight">Bone-a-find</span>
         </a>
         <ul className="hidden items-center gap-8 md:flex">
           {LINKS.map((l) => (
