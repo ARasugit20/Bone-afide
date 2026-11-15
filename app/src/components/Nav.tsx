@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import type { Role } from "@/lib/types";
 import { AccountControl, useAuth } from "./AuthProvider";
+import { DemoToggle } from "./DemoToggle";
+import { Mascot } from "./Mascot";
 
 const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] }[] = [
   { href: "/", label: "Dashboard", roles: ["staff", "vet"] },
@@ -16,27 +18,28 @@ const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] 
 
 export function Nav() {
   return (
-    <header className="sticky top-0 z-20 border-b border-line/70 bg-cream/80 backdrop-blur print:hidden">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+    <header className="z-20 border-b border-line/70 bg-cream/85 backdrop-blur lg:sticky lg:top-0 print:hidden">
+      <div className="mx-auto flex max-w-6xl flex-col gap-2.5 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
         <div className="flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-clay text-white shadow-sm">
-              <PawIcon />
+          <Link href="/" className="flex items-center gap-2.5 rounded-2xl" aria-label="Bonafide home">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-line">
+              <Mascot className="h-9 w-9" />
             </span>
             <span className="leading-tight">
               <span className="block font-display text-xl font-semibold">Bonafide</span>
               <span className="block whitespace-nowrap text-xs text-muted">judge the dog, not the label</span>
             </span>
           </Link>
-          <div className="lg:hidden"><AccountControl /></div>
+          <div className="lg:hidden"><DemoToggle /></div>
         </div>
-        <div className="flex items-center gap-3">
-          <nav className="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:pb-0">
-            <Suspense fallback={<Links path={null} />}>
-              <ActiveLinks />
-            </Suspense>
-          </nav>
-          <div className="hidden lg:block"><AccountControl /></div>
+        <nav aria-label="Main" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 py-0.5 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:[mask-image:none]">
+          <Suspense fallback={<Links path={null} />}>
+            <ActiveLinks />
+          </Suspense>
+        </nav>
+        <div className="flex items-center gap-2 lg:shrink-0">
+          <div className="hidden lg:block"><DemoToggle /></div>
+          <AccountControl />
         </div>
       </div>
     </header>
@@ -54,7 +57,8 @@ function Links({ path }: { path: string | null }) {
     <Link
       key={l.href}
       href={l.href}
-      className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${
+      aria-current={active(l.href) ? "page" : undefined}
+      className={`whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-semibold transition ${
         active(l.href) ? "bg-ink text-cream shadow-sm" : "text-muted hover:bg-sand hover:text-ink"
       }`}
     >

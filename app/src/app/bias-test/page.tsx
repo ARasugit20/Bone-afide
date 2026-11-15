@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { Gate } from "@/components/AuthProvider";
 import { Avatar, Bar, Button, Card, Empty, ErrorNote, LevelChip, PageTitle, Spinner } from "@/components/ui";
 import { EVERYONE } from "@/lib/access";
+import { peek, remember } from "@/lib/clientCache";
 import { diffWords, toRuns, type Token } from "@/lib/diff";
 import type { Dog } from "@/lib/types";
 import { getJSON, LEVELS } from "@/lib/ui";
@@ -53,6 +54,11 @@ function BiasTest() {
 
   async function run(fresh = false) {
     if (!dogId) return;
+    const warmed = !clip && !fresh ? peek<Result>(`bias:${dogId}`) : undefined;
+    if (warmed) {
+      setError(null);
+      return setResult(warmed);
+    }
     setRunning(true);
     setError(null);
     setResult(null);
@@ -66,7 +72,9 @@ function BiasTest() {
             return { method: "POST", body: form };
           })()
         : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dog_id: dogId, fresh }) };
-      setResult(await getJSON<Result>("/api/bias-test", init));
+      const res = await getJSON<Result>("/api/bias-test", init);
+      if (!clip) remember(`bias:${dogId}`, res);
+      setResult(res);
     } catch (err) {
       setError((err as Error).message);
     } finally {

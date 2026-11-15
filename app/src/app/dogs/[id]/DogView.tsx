@@ -97,11 +97,11 @@ export function DogView() {
           <h2 className="font-display text-xl font-semibold">Behavior scores</h2>
           <p className="mb-4 text-sm text-muted">Measured from kennel video over {d.day} days.</p>
           <div className="space-y-4">
-            <Bar label="Energy" value={d.energy} color="bg-clay" />
-            <Bar label="Stress" value={d.stress} color="bg-sage" hint={d.stress > 60 ? "needs a calm start" : undefined} />
-            <Bar label="Approachability" value={d.approachability} color="bg-amber-400" />
-            <Bar label="Confidence" value={d.confidence} color="bg-sky-400" />
-            <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} hint="per session" />
+            <Bar label="Energy" value={d.energy} color="bg-clay" delay={150} />
+            <Bar label="Stress" value={d.stress} color="bg-sage" hint={d.stress > 60 ? "needs a calm start" : undefined} delay={250} />
+            <Bar label="Approachability" value={d.approachability} color="bg-amber-400" delay={350} />
+            <Bar label="Confidence" value={d.confidence} color="bg-sky-400" delay={450} />
+            <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} hint="per session" delay={550} />
           </div>
           <Caption className="mt-4" />
         </Card>
@@ -113,7 +113,7 @@ export function DogView() {
               <span className="rounded-full bg-sand px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">sample data</span>
             )}
           </div>
-          <p className="mb-2 text-sm text-muted">Daily average stress and energy.</p>
+          <p className="mb-2 text-sm text-muted">Daily average stress (bold) and energy.</p>
           {trend.loading ? (
             <Spinner label="Drawing the trend…" />
           ) : trend.data?.series.length ? (

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Gate, useAuth } from "@/components/AuthProvider";
 import { FamilyCard } from "@/components/FamilyCard";
 import { EVERYONE } from "@/lib/access";
-import { PawIcon } from "@/components/Nav";
+import { Mascot } from "@/components/Mascot";
 import { Button, Card, ErrorNote, PageTitle, Spinner } from "@/components/ui";
 import type { Family } from "@/lib/types";
 import { postJSON } from "@/lib/ui";
@@ -131,7 +131,7 @@ function IntakePage() {
     <div className="mx-auto grid max-w-5xl gap-5 lg:grid-cols-[1.5fr_1fr]">
       <Card className="flex h-[70vh] min-h-[28rem] flex-col p-0">
         <div className="flex items-center gap-3 border-b border-line px-5 py-4">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-clay text-white"><PawIcon /></span>
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white ring-1 ring-line"><Mascot className="h-9 w-9" /></span>
           <div>
             <p className="font-display text-lg font-semibold leading-tight">Adoption counselor</p>
             <p className="text-xs text-muted">Chatting with {name}</p>

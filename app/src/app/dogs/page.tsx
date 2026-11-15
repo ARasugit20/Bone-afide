@@ -27,7 +27,7 @@ function DogsPage() {
     <div>
       <PageTitle title="Dogs in care" sub="Every score comes from behavior on video — never from breed." />
 
-      <div className="-mx-1 mb-5 flex gap-2 overflow-x-auto pb-1">
+      <div className="no-scrollbar -mx-1 mb-5 flex gap-2 overflow-x-auto px-1 py-1 [mask-image:linear-gradient(to_right,black_88%,transparent)] sm:[mask-image:none]">
         {FILTERS.map((f) => (
           <button
             key={f}

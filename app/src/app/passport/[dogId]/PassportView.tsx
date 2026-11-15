@@ -2,9 +2,10 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PawIcon } from "@/components/Nav";
+import { Mascot } from "@/components/Mascot";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge, UpdatedAt } from "@/components/ui";
+import { peek, remember } from "@/lib/clientCache";
 import type { Dog, Rental } from "@/lib/types";
 import { LEVELS, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
@@ -31,8 +32,8 @@ export function PassportView() {
 
       <Card className="rise relative overflow-hidden print:shadow-none">
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-clay/10 blur-2xl" />
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-clay">
-          <PawIcon className="h-4 w-4" /> Bonafide Behavior Passport
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-clay-dark">
+          <Mascot className="h-6 w-6" /> Bonafide Behavior Passport
         </div>
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
           <Avatar name={d.name} size="h-20 w-20 text-3xl" />
@@ -61,10 +62,10 @@ export function PassportView() {
           <h2 className="font-display text-xl font-semibold">Behavior scores</h2>
           <div className="mt-4 space-y-3.5">
             <Bar label="Energy" value={d.energy} color="bg-clay" />
-            <Bar label="Stress" value={d.stress} color="bg-sage" />
-            <Bar label="Approachability" value={d.approachability} color="bg-amber-400" />
-            <Bar label="Confidence" value={d.confidence} color="bg-sky-400" />
-            <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} />
+            <Bar label="Stress" value={d.stress} color="bg-sage" delay={80} />
+            <Bar label="Approachability" value={d.approachability} color="bg-amber-400" delay={160} />
+            <Bar label="Confidence" value={d.confidence} color="bg-sky-400" delay={240} />
+            <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} delay={320} />
           </div>
           <Caption className="mt-4" />
         </Card>
@@ -131,14 +132,20 @@ export function PassportView() {
 }
 
 function useSummary(dogId: string | null) {
-  const [state, setState] = useState<{ text: string; error: string | null; loading: boolean }>({ text: "", error: null, loading: true });
+  const [state, setState] = useState<{ text: string; error: string | null; loading: boolean }>(() => {
+    const cached = dogId ? peek<{ summary: string }>(`passport:${dogId}`) : undefined;
+    return { text: cached?.summary ?? "", error: null, loading: !cached };
+  });
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     if (!dogId) return;
     let cancelled = false;
     postJSON<{ summary: string }>(`/api/passport/${dogId}`).then(
-      (r) => !cancelled && setState({ text: r.summary, error: null, loading: false }),
+      (r) => {
+        remember(`passport:${dogId}`, r);
+        if (!cancelled) setState({ text: r.summary, error: null, loading: false });
+      },
       (err: Error) => !cancelled && setState({ text: "", error: err.message, loading: false }),
     );
     return () => {

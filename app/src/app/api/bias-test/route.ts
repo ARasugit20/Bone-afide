@@ -29,6 +29,7 @@ export const POST = safe(async (req: NextRequest) => {
   let dogId = "";
   let video: File | null = null;
   let fresh = false;
+  let cachedOnly = false;
 
   if (req.headers.get("content-type")?.includes("multipart/form-data")) {
     const form = await req.formData();
@@ -40,6 +41,7 @@ export const POST = safe(async (req: NextRequest) => {
     const body = await req.json();
     dogId = body.dog_id ?? "";
     fresh = Boolean(body.fresh);
+    cachedOnly = Boolean(body.cached_only);
   }
   if (!dogId) return fail("dog_id is required", 400);
   if (video && video.size > MAX_BYTES) return fail("That clip is over 20 MB — please trim it.", 413);
@@ -57,6 +59,7 @@ export const POST = safe(async (req: NextRequest) => {
     const cached = await tests.findOne({ key }, { projection: { _id: 0 } });
     if (cached) return NextResponse.json({ ...cached, dog, cached: true });
   }
+  if (cachedOnly) return NextResponse.json({ dog_id: dogId, cached: false });
 
   let inputParts: Part[];
   let inputInfo: Record<string, unknown>;

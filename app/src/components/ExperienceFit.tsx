@@ -22,13 +22,13 @@ export function ExperienceFit({ dog, family }: { dog: Dog; family: Family }) {
                 i === need ? `ring-2 ring-offset-2 ring-offset-white ${LEVELS[dog.handling_level].ring}` : ""
               }`}
             />
-            <span className={`mt-1 block text-[10px] leading-tight ${i === need ? "font-bold text-ink" : "text-muted"}`}>
+            <span className={`mt-1 block text-[11px] leading-tight ${i === need ? "font-bold text-ink" : "text-muted"}`}>
               {label}
             </span>
           </div>
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-muted">
+      <p className="mt-1.5 text-[11px] text-muted">
         Bar = family · ring = {dog.name}&apos;s {dog.handling_level} minimum
       </p>
     </div>

@@ -16,9 +16,9 @@ type Board = { ran?: boolean; matches: Match[]; unmatched: string[] };
 type Row = { m: Match; dog: Dog; fam: Family };
 
 function scoreTone(score: number) {
-  if (score >= 80) return "bg-emerald-600";
-  if (score >= 65) return "bg-clay";
-  return "bg-amber-500";
+  if (score >= 80) return "bg-emerald-700";
+  if (score >= 65) return "bg-clay-dark";
+  return "bg-amber-700";
 }
 
 // Green/Yellow first, Orange/Red last; best score first within each group.
@@ -41,6 +41,7 @@ function MatchPage() {
   const board = useApi<Board>("/api/match");
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  const [runId, setRunId] = useState(0); // bumps on each run so the cards replay their entrance
 
   async function rerun() {
     setRunning(true);
@@ -48,6 +49,7 @@ function MatchPage() {
     try {
       const res = await postJSON<Board>("/api/match");
       board.setData({ ...res, ran: true });
+      setRunId((n) => n + 1);
     } catch (err) {
       setRunError((err as Error).message);
     } finally {
@@ -118,32 +120,45 @@ function MatchPage() {
         />
       ) : (
         <div className="space-y-8">
-          <section className="space-y-4">
+          <section key={runId} className="space-y-4 sm:space-y-5">
             {rows.length === 0 && (
               <Empty
                 title={isFamily ? "No match for you this round" : "No safe pairings this round"}
                 body={isFamily ? "That's okay — new dogs arrive every week, and the right one is worth the wait." : "Every possible pairing hit a need the family can't meet yet."}
               />
             )}
-            {rows.map(({ m, dog, fam }) => (
-              <Card key={m.dog_id} className="rise p-4 sm:p-5">
-                <div className="grid items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
-                  <DogCard dog={dog} compact href={dogHref(dog)} />
-                  <div className="flex flex-row items-center justify-center gap-3 md:flex-col">
-                    <span className="hidden text-2xl text-line md:block" aria-hidden>⟷</span>
-                    <div className={`grid h-16 w-16 place-items-center rounded-full text-white shadow-md ${scoreTone(m.score)}`}>
+            {rows.map(({ m, dog, fam }, i) => (
+              <Card key={m.dog_id} className="rise p-4 sm:p-5" style={{ animationDelay: `${i * 90}ms` }}>
+                <div className="relative grid items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
+                  {/* Soft connector between the paired cards: vertical when stacked, horizontal side by side. */}
+                  <span
+                    aria-hidden
+                    className="draw-y absolute bottom-8 left-1/2 top-8 w-1 -translate-x-1/2 rounded-full bg-gradient-to-b from-clay/10 via-clay/40 to-clay/10 md:hidden"
+                    style={{ animationDelay: `${i * 90 + 200}ms` }}
+                  />
+                  <span
+                    aria-hidden
+                    className="draw-x absolute left-[20%] right-[20%] top-1/2 hidden h-1 -translate-y-1/2 rounded-full bg-gradient-to-r from-clay/10 via-clay/40 to-clay/10 md:block"
+                    style={{ animationDelay: `${i * 90 + 200}ms` }}
+                  />
+                  <div className="relative z-10"><DogCard dog={dog} compact href={dogHref(dog)} /></div>
+                  <div className="relative z-10 flex flex-row items-center justify-center gap-3 md:flex-col">
+                    <div
+                      className={`grid h-16 w-16 place-items-center rounded-full text-white shadow-md ring-4 ring-white ${scoreTone(m.score)}`}
+                      aria-label={`Fit score ${m.score}`}
+                    >
                       <span className="text-center leading-none">
                         <span className="block font-display text-2xl font-semibold">{m.score}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">fit</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider opacity-90">fit</span>
                       </span>
                     </div>
                     {dog.handling_level === "Red" && (
-                      <span className="max-w-[9rem] rounded-xl bg-rose-50 px-2 py-1 text-center text-[10px] font-bold leading-tight text-rose-800 ring-1 ring-rose-200">
+                      <span className="max-w-[10rem] rounded-xl bg-rose-50 px-2.5 py-1 text-center text-[11px] font-bold leading-tight text-rose-800 ring-1 ring-rose-200">
                         Foster-to-adopt · expert sign-off required
                       </span>
                     )}
                   </div>
-                  <FamilyCard family={fam} />
+                  <div className="relative z-10"><FamilyCard family={fam} /></div>
                 </div>
                 <div className="mt-4 grid gap-4 border-t border-line pt-4 md:grid-cols-[1.4fr_1fr]">
                   <ul className="space-y-1.5">

@@ -138,13 +138,14 @@ export function AccountControl() {
   const auth = useAuth();
   if (auth.mode === "demo") {
     return (
-      <div className="flex items-center gap-1 rounded-full bg-sand p-1" title="Demo mode — Cognito not configured">
-        <span className="px-2 text-[10px] font-bold uppercase tracking-wider text-muted">Demo</span>
+      <div className="flex items-center gap-1 rounded-full bg-sand p-1" role="group" aria-label="View as role (Cognito not configured)">
+        <span className="px-2 text-[11px] font-bold uppercase tracking-wider text-muted">View as</span>
         {ROLES.map((r) => (
           <button
             key={r.id}
             onClick={() => auth.setDemoRole(r.id)}
-            className={`rounded-full px-2.5 py-1 text-xs font-bold transition ${
+            aria-pressed={auth.role === r.id}
+            className={`min-h-8 rounded-full px-3 py-1 text-xs font-bold transition ${
               auth.role === r.id ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"
             }`}
           >
