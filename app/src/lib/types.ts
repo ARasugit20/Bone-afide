@@ -16,6 +16,17 @@ export interface Dog {
   photo?: string;
   expert_reviewed: boolean;
   updated_at?: string; // ISO; set by the pipeline when present
+  pose?: Pose; // optional, written by pipeline/pose/push_pose.py
+}
+
+// Written by the pose prototype. Every field is optional: clips often can't support a metric.
+export interface Pose {
+  posture_pct?: { standing?: number; sitting?: number; lying?: number };
+  tail_h?: number | null;
+  head_h?: number | null;
+  readiness?: number; // 0-100
+  confidence?: number;
+  version?: string;
 }
 
 export type Pet = "cats" | "dogs" | "small";

@@ -3,4 +3,7 @@
 node_modules
 pipeline/pose/.venv/
 pipeline/pose/output/
+pipeline/pose/work/
+pipeline/pose/tune.log
+pipeline/pose/labels/**/*.png
 *.h5

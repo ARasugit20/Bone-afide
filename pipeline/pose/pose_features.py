@@ -1,4 +1,4 @@
-"""Summarize a SuperAnimal pose JSON into posture and height metrics.
+"""Turn a SuperAnimal pose JSON into posture and height features.
 
 Usage:
   python pose_features.py --pose output/katie_pose.json
@@ -8,129 +8,150 @@ import json
 import math
 from pathlib import Path
 
-CONF_MIN = 0.5
+CUTOFF = 0.25
+MAX_GAP = 3
+NOT_MEASURABLE = "not_measurable"
+
+# Preference order; neck_base -> tail_base is the documented fallback back line.
+BACKLINE = [("neck_base", "back_base"), ("back_base", "tail_base"), ("neck_base", "tail_base"),
+            ("back_base", "back_end"), ("neck_base", "back_end")]
 
 
-def pick(names: list[str], *needles: str) -> str | None:
-    lowered = {n.lower(): n for n in names}
-    for needle in needles:
-        if needle in lowered:
-            return lowered[needle]
-    for needle in needles:
-        for low, original in lowered.items():
-            if needle in low:
-                return original
+def pick(names, *needles):
+    low = {n.lower(): n for n in names}
+    for n in needles:
+        if n in low:
+            return low[n]
+    for n in needles:
+        for k, orig in low.items():
+            if n in k:
+                return orig
     return None
 
 
-def point(frame: dict, name: str | None):
-    if not name or name not in frame:
-        return None
-    x, y, c = frame[name]
-    if c < CONF_MIN:
-        return None
-    return (x, y, c)
+def interpolate(frames, names, max_gap=MAX_GAP):
+    """Fill short confidence dropouts by linear interpolation between confident neighbours."""
+    series = {n: [None] * len(frames) for n in names}
+    for i, f in enumerate(frames):
+        for n in names:
+            v = f["keypoints"].get(n)
+            if v and v[2] >= CUTOFF:
+                series[n][i] = v
+    for n in names:
+        col = series[n]
+        i = 0
+        while i < len(col):
+            if col[i] is None:
+                j = i
+                while j < len(col) and col[j] is None:
+                    j += 1
+                before, after = (i - 1 if i > 0 else None), (j if j < len(col) else None)
+                if before is not None and after is not None and (j - i) <= max_gap:
+                    a, b = col[before], col[after]
+                    span = after - before
+                    for k in range(i, j):
+                        w = (k - before) / span
+                        col[k] = [a[0] + w * (b[0] - a[0]), a[1] + w * (b[1] - a[1]), min(a[2], b[2])]
+                i = j
+            else:
+                i += 1
+    return series
 
 
-def signed_height(pt, a, b) -> float | None:
-    """Signed distance of pt from line a->b, divided later by body length. Image y grows downward, so up is negative raw dy; we flip the sign."""
+def signed_height(pt, a, b):
+    """Signed distance from line a->b; image y grows downward, so the sign is flipped to make up positive."""
     if not pt or not a or not b:
         return None
     dx, dy = b[0] - a[0], b[1] - a[1]
     length = math.hypot(dx, dy)
     if length < 1e-6:
         return None
-    cross = dx * (pt[1] - a[1]) - dy * (pt[0] - a[0])
-    return -cross / length
+    return -(dx * (pt[1] - a[1]) - dy * (pt[0] - a[0])) / length
 
 
-def mean(xs: list[float]) -> float | None:
+def mean(xs):
     return sum(xs) / len(xs) if xs else None
 
 
-def main() -> None:
-    p = argparse.ArgumentParser()
-    p.add_argument("--pose", required=True)
-    args = p.parse_args()
-    data = json.loads(Path(args.pose).read_text())
-    names = data.get("keypoint_names") or sorted({k for f in data["frames"] for k in f["keypoints"]})
-    print(f"keypoints ({len(names)}): {', '.join(names)}")
+def compute(pose: dict, viewpoint: str | None = None) -> dict:
+    frames = pose["frames"]
+    names = pose.get("keypoint_names") or sorted({k for f in frames for k in f["keypoints"]})
+    series = interpolate(frames, names)
+    get = lambda n, i: (series[n][i] if n and n in series else None)  # noqa: E731
 
-    # SuperAnimal-Quadruped names, confirmed from this model's output.
     head_name = pick(names, "nose", "upper_jaw")
     tail_tip = pick(names, "tail_end", "tail_tip")
-    line_pairs = [
-        (pick(names, "neck_base"), pick(names, "back_base")),
-        (pick(names, "neck_end"), pick(names, "back_base")),
-        (pick(names, "back_base"), pick(names, "back_end")),
-        (pick(names, "back_base"), pick(names, "tail_base")),
-        (pick(names, "neck_base"), pick(names, "back_end")),
-        (pick(names, "neck_base"), pick(names, "tail_base")),
-        (pick(names, "neck_base"), pick(names, "back_middle")),
-    ]
-    line_pairs = [(a, b) for a, b in line_pairs if a and b]
+    pairs = [(pick(names, a), pick(names, b)) for a, b in BACKLINE]
+    pairs = [(a, b) for a, b in pairs if a and b]
     shoulder = pick(names, "front_left_thai", "front_right_thai")
     hip = pick(names, "back_left_thai", "back_right_thai")
     front_paw = pick(names, "front_left_paw", "front_right_paw")
     hind_paw = pick(names, "back_left_paw", "back_right_paw")
-    print(f"using head={head_name} tail_tip={tail_tip} back-line candidates={line_pairs}")
-    print(f"using shoulder={shoulder} hip={hip} front_paw={front_paw} hind_paw={hind_paw}")
-    if not head_name or not line_pairs:
-        raise SystemExit("could not map a head point and a back line from the keypoint names above")
 
     counts = {"standing": 0, "sitting": 0, "lying": 0}
     posture_n = 0
-    tail_heights, head_heights, confs = [], [], []
-    used = 0
-    for frame in data["frames"]:
-        kp = frame["keypoints"]
-        line = next(((point(kp, a), point(kp, b)) for a, b in line_pairs if point(kp, a) and point(kp, b)), None)
+    tails, heads, confs, backline_frames = [], [], [], 0
+
+    for i in range(len(frames)):
+        line = next(((get(a, i), get(b, i)) for a, b in pairs if get(a, i) and get(b, i)), None)
         if not line:
             continue
         a, b = line
         body = math.hypot(b[0] - a[0], b[1] - a[1])
         if body < 1e-6:
             continue
-        used += 1
-        tip, head = point(kp, tail_tip), point(kp, head_name)
+        backline_frames += 1
+        tip, head = get(tail_tip, i), get(head_name, i)
         th, hh = signed_height(tip, a, b), signed_height(head, a, b)
         if th is not None:
-            tail_heights.append(th / body)
+            tails.append(th / body)
             confs.append(min(tip[2], a[2], b[2]))
         if hh is not None:
-            head_heights.append(hh / body)
+            heads.append(hh / body)
             confs.append(min(head[2], a[2], b[2]))
 
-        # Image y grows downward, so a standing leg is a large positive drop from joint to paw.
-        shoulder_pt, hip_pt = point(kp, shoulder), point(kp, hip)
-        front, hind = point(kp, front_paw), point(kp, hind_paw)
-        if shoulder_pt and hip_pt and (front or hind):
-            drops = []
-            if front:
-                drops.append((front[1] - shoulder_pt[1]) / body)
-            if hind:
-                drops.append((hind[1] - hip_pt[1]) / body)
-            front_drop = (front[1] - shoulder_pt[1]) / body if front else None
-            hind_drop = (hind[1] - hip_pt[1]) / body if hind else None
+        sh, hp = get(shoulder, i), get(hip, i)
+        fp, bp = get(front_paw, i), get(hind_paw, i)
+        if sh and hp and (fp or bp):
+            front_drop = (fp[1] - sh[1]) / body if fp else None
+            hind_drop = (bp[1] - hp[1]) / body if bp else None
+            drops = [d for d in (front_drop, hind_drop) if d is not None]
             if max(drops) < 0.35:
                 posture = "lying"
-            elif hind_drop is not None and front_drop is not None and hind_drop < 0.55 and front_drop >= 0.55:
+            elif hind_drop is not None and front_drop is not None and hind_drop < 0.55 <= front_drop:
                 posture = "sitting"
             else:
                 posture = "standing"
             counts[posture] += 1
             posture_n += 1
-            confs.append(min(p[2] for p in (shoulder_pt, hip_pt, front, hind) if p))
+            confs.append(min(p[2] for p in (sh, hp, fp, bp) if p))
 
-    total = posture_n or 1
+    total = len(frames) or 1
+    # A head-on or rear view cannot support a side-profile height or posture read.
+    blocked = viewpoint == "front_or_rear"
     summary = {
-        "posture_pct": {k: round(100 * v / total, 1) if posture_n else 0.0 for k, v in counts.items()},
-        "tail_height_mean": None if mean(tail_heights) is None else round(mean(tail_heights), 3),
-        "head_height_mean": None if mean(head_heights) is None else round(mean(head_heights), 3),
+        "posture_pct": NOT_MEASURABLE if blocked or not posture_n else {k: round(100 * v / posture_n, 1) for k, v in counts.items()},
+        "tail_height_mean": NOT_MEASURABLE if blocked or mean(tails) is None else round(mean(tails), 3),
+        "head_height_mean": NOT_MEASURABLE if blocked or mean(heads) is None else round(mean(heads), 3),
         "mean_confidence": None if mean(confs) is None else round(mean(confs), 3),
-        "frames_used": used,
+        "frames_used": backline_frames,
+        "frames_total": len(frames),
+        "backline_coverage": round(backline_frames / total, 3),
+        "posture_frames": posture_n,
+        "viewpoint": viewpoint or "unknown",
     }
-    dest = Path(args.pose).with_name(Path(args.pose).stem.replace("_pose", "") + "_features.json")
+    return summary
+
+
+def main() -> None:
+    p = argparse.ArgumentParser()
+    p.add_argument("--pose", required=True)
+    p.add_argument("--viewpoint")
+    args = p.parse_args()
+    pose = json.loads(Path(args.pose).read_text())
+    print(f"keypoints ({len(pose.get('keypoint_names', []))}): {', '.join(pose.get('keypoint_names', []))}")
+    summary = compute(pose, args.viewpoint)
+    dest = Path(args.pose).with_name(Path(args.pose).stem.replace("_pose", "").replace("pose", "features") + "_features.json")
     dest.write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2))
     print(f"wrote {dest}")

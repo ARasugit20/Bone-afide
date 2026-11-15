@@ -1,0 +1,9 @@
+{
+  "_comment": "Edit these thresholds freely. 'ideal' scores 100%, 'min' is the floor for a passing clip.",
+  "detection_rate": { "ideal": 0.95, "min": 0.8 },
+  "backline_coverage": { "ideal": 0.8, "min": 0.5 },
+  "mean_confidence": { "ideal": 0.7, "min": 0.45 },
+  "jitter": { "ideal": 0.02, "min": 0.05, "lower_is_better": true },
+  "half_clip_consistency": { "ideal": 0.1, "min": 0.2, "lower_is_better": true },
+  "posture_accuracy": { "ideal": 0.85, "min": 0.7 }
+}

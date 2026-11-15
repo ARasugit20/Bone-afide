@@ -1,5 +1,5 @@
 import type { Db } from "mongodb";
-import type { Dog, HandlingLevel } from "./types";
+import type { Dog, HandlingLevel, Pose } from "./types";
 
 const LEVELS: HandlingLevel[] = ["Green", "Yellow", "Orange", "Red"];
 const TRENDS: Dog["trend"][] = ["improving", "stable", "worsening"];
@@ -54,7 +54,37 @@ export function normalizeDog(raw: unknown): Dog | null {
     ...(typeof r.photo === "string" && r.photo ? { photo: r.photo } : {}),
     expert_reviewed: r.expert_reviewed === true,
     ...(updated && !isNaN(updated.getTime()) ? { updated_at: updated.toISOString() } : {}),
+    ...(() => {
+      const pose = normalizePose(r.pose);
+      return pose ? { pose } : {};
+    })(),
   };
+}
+
+/** Pose is advisory, so a malformed block is dropped rather than failing the dog. */
+function normalizePose(raw: unknown): Pose | null {
+  if (!raw || typeof raw !== "object") return null;
+  const p = raw as Record<string, unknown>;
+  const pct = (v: unknown) => (Number.isFinite(num(v)) ? Math.min(100, Math.max(0, num(v))) : undefined);
+  const real = (v: unknown) => (Number.isFinite(num(v)) ? num(v) : null);
+  const posture = p.posture_pct && typeof p.posture_pct === "object" ? (p.posture_pct as Record<string, unknown>) : null;
+  const pose: Pose = {
+    ...(posture
+      ? {
+          posture_pct: {
+            ...(pct(posture.standing) !== undefined ? { standing: pct(posture.standing) } : {}),
+            ...(pct(posture.sitting) !== undefined ? { sitting: pct(posture.sitting) } : {}),
+            ...(pct(posture.lying) !== undefined ? { lying: pct(posture.lying) } : {}),
+          },
+        }
+      : {}),
+    tail_h: real(p.tail_h),
+    head_h: real(p.head_h),
+    ...(pct(p.readiness) !== undefined ? { readiness: pct(p.readiness) } : {}),
+    ...(Number.isFinite(num(p.confidence)) ? { confidence: num(p.confidence) } : {}),
+    ...(typeof p.version === "string" && p.version ? { version: p.version } : {}),
+  };
+  return Object.values(pose).some((v) => v !== null && v !== undefined) ? pose : null;
 }
 
 // "max-01" -> "Max"

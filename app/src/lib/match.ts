@@ -1,3 +1,4 @@
+import { applyPose } from "./pose";
 import type { Dog, Family, HandlingLevel, Match } from "./types";
 
 export const MIN_EXPERIENCE: Record<HandlingLevel, number> = { Green: 0, Yellow: 1, Orange: 2, Red: 3 };
@@ -22,7 +23,9 @@ function petConflict(dog: Dog, family: Family): string | null {
   return null;
 }
 
-export function scorePair(dog: Dog, family: Family): PairScore {
+export function scorePair(input: Dog, family: Family): PairScore {
+  // Pose is a gated, advisory nudge to energy/stress only; guardrails below use the original dog.
+  const { dog, reason: poseReason } = applyPose(input);
   const reasons: string[] = [];
   let blocked = false;
   const need = MIN_EXPERIENCE[dog.handling_level];
@@ -66,6 +69,7 @@ export function scorePair(dog: Dog, family: Family): PairScore {
     reasons.push(`A yard gives ${dog.name} room to burn off energy`);
   }
   if (dog.trend === "improving") reasons.push("Stress has dropped since day 1 — settling in");
+  if (poseReason) reasons.push(poseReason);
 
   return {
     score: Math.round(Math.max(0, Math.min(100, score))),
