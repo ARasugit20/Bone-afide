@@ -36,7 +36,7 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: EASE_UI }}
         >
-          <Eyebrow tone="tennis">Behavior, measured — never breed</Eyebrow>
+          <Eyebrow tone="tennis">Behavior, measured. Never breed.</Eyebrow>
           <h1 className="mt-5 text-display text-on-dark">
             Judge the dog, <span className="block"><Accent tone="tennis">not the label.</Accent></span>
           </h1>
@@ -142,7 +142,7 @@ function LiveCard() {
           ))}
         </ul>
         <div className="mt-5">
-          <LevelChip level="green">Green — great for first-time owners</LevelChip>
+          <LevelChip level="green">Green: great for first-time owners</LevelChip>
         </div>
       </div>
     </motion.div>

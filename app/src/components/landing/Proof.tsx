@@ -5,7 +5,7 @@ import { Doodles } from "./decor";
 import { CountUp, Reveal, RevealItem } from "./motion";
 
 const STATS = [
-  { to: 28, suffix: "%", text: "of surrenders are behavior mismatches — the dog and the home just didn't fit." },
+  { to: 28, suffix: "%", text: "of surrenders are behavior mismatches. The dog and the home just didn't fit." },
   { to: 27, suffix: "%", text: "of housing-related surrenders come from breed or size bans." },
   { to: 3, suffix: "×", text: "longer shelter stay, from a single label on a kennel card." },
 ];
@@ -13,7 +13,6 @@ const STATS = [
 export function Proof() {
   return (
     <section id="proof" aria-labelledby="proof-title" className="section-pad relative isolate">
-      <div aria-hidden="true" className="paw-trail pointer-events-none absolute inset-0 -z-10" />
       <Doodles layout="proof" />
       <Reveal className="container-page">
         <RevealItem className="max-w-[40rem]">

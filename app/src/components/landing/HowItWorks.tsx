@@ -17,12 +17,12 @@ const STEPS = [
   {
     icon: Activity,
     title: "Behavior scores",
-    text: "Energy, stress, approachability, confidence and arousal — measured across several days, not one bad afternoon.",
+    text: "Energy, stress, approachability, confidence and arousal, measured across several days, not one bad afternoon.",
   },
   {
     icon: Users,
     title: "Whole-shelter match",
-    text: "Every dog and every waiting family, matched at once, so the best fit wins — not the first in line.",
+    text: "Every dog and every waiting family, matched at once, so the best fit wins, not the first in line.",
   },
 ];
 
@@ -35,7 +35,6 @@ export function HowItWorks() {
   return (
     <section id="how-it-works" aria-labelledby="how-title" className="section-pad relative isolate">
       <FadedPhoto src={IMAGES.parkRun} tone="canvas" />
-      <div aria-hidden="true" className="paw-trail pointer-events-none absolute inset-0 -z-10" />
       <Doodles layout="how" />
       <div className="container-page">
         <Reveal className="max-w-[40rem]">

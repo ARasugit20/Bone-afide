@@ -177,13 +177,12 @@ function MatchViz() {
 
 const NOTES = [
   { day: "Day 2", who: "Staff", icon: Heart, text: "Shy with tall visitors, warms up fast with treats." },
-  { day: "Day 4", who: "Vet", icon: Stethoscope, text: "Ear discomfort treated — stress scores re-checked." },
+  { day: "Day 4", who: "Vet", icon: Stethoscope, text: "Ear discomfort treated. Stress scores re-checked." },
 ];
 
 export function Bento() {
   return (
     <section id="demo" aria-labelledby="bento-title" className="section-pad relative isolate">
-      <div aria-hidden="true" className="paw-trail pointer-events-none absolute inset-0 -z-10" />
       <Doodles layout="bento" />
       <div className="container-page">
         <Reveal className="max-w-[40rem]">
@@ -221,7 +220,7 @@ export function Bento() {
             className="md:col-span-2"
             kicker="Handling levels"
             title="Who each dog suits"
-            detail="Levels describe the home a dog needs today — and they move as the dog does."
+            detail="Levels describe the home a dog needs today, and they move as the dog does."
           >
             <ul className="space-y-2.5">
               {LEVELS.map((l) => (
@@ -237,7 +236,7 @@ export function Bento() {
             className="md:col-span-2"
             kicker="Any camera"
             title="Camera-shake proof"
-            detail="Works on volunteers' handheld phone video — we stabilize before we measure."
+            detail="Works on volunteers' handheld phone video, which we stabilize before we measure."
           >
             <div className="relative overflow-hidden rounded-[20px] bg-line">
               <div className="shaky">

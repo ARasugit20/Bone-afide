@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import type { Role } from "@/lib/types";
-import { useAuth } from "./AuthProvider";
+import { AccountControl, useAuth } from "./AuthProvider";
 import { prewarm } from "@/lib/prewarm";
 
 // Clicking the brand logo/name leaves the dashboard for the public marketing
@@ -34,16 +34,17 @@ export function Nav() {
   }, []);
   return (
     <header className="glass-nav z-20 lg:sticky lg:top-0 print:hidden">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:h-16 lg:flex-nowrap lg:py-0 lg:px-8">
-        <a href={LANDING_URL} className="flex items-center gap-2 rounded-full text-ink" aria-label="Bone-a-find home">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:h-16 lg:flex-nowrap lg:gap-x-4 lg:py-0 lg:px-8">
+        <a href={LANDING_URL} className="flex shrink-0 items-center gap-2 rounded-full text-ink" aria-label="Bone-a-find home">
           <Image src="/logo.png" alt="" width={32} height={32} className="size-8 rounded-full" priority />
           <span className="font-display text-lg font-semibold tracking-tight">Bone-a-find</span>
         </a>
-        <nav aria-label="Main" className="no-scrollbar order-3 -mx-1 flex w-full gap-1 overflow-x-auto px-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:order-none lg:w-auto lg:flex-1 lg:[mask-image:none]">
+        <nav aria-label="Main" className="no-scrollbar order-3 -mx-1 flex w-full min-w-0 gap-1 overflow-x-auto px-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:order-none lg:w-auto lg:flex-1 lg:px-0 lg:[mask-image:none]">
           <Suspense fallback={<Links path={null} />}>
             <ActiveLinks />
           </Suspense>
         </nav>
+        <div className="ml-auto hidden shrink-0 lg:block"><AccountControl /></div>
       </div>
     </header>
   );
@@ -61,7 +62,7 @@ function Links({ path }: { path: string | null }) {
       key={l.href}
       href={l.href}
       aria-current={active(l.href) ? "page" : undefined}
-      className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+      className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition lg:px-2 ${
         active(l.href) ? "bg-forest-tint text-forest" : "text-muted hover:text-ink"
       }`}
     >

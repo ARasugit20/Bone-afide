@@ -71,7 +71,7 @@ const ICONS = { bone: Bone, ball: Ball, frisbee: Frisbee, leash: Leash, bowl: Bo
 type IconName = keyof typeof ICONS;
 type Spot = { icon: IconName; top: string; left: string; size: number; rotate: number; depth: number };
 
-/** Icon positions per section — kept mostly in the side margins. */
+/** Icon positions per section. Kept mostly in the side margins. */
 const LAYOUTS: Record<string, Spot[]> = {
   proof: [
     { icon: "bone", top: "10%", left: "84%", size: 96, rotate: -18, depth: 60 },

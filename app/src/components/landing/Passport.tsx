@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Accent, Eyebrow, LevelChip, PawMark } from "./bits";
+import Image from "next/image";
+import { Accent, Eyebrow, LevelChip } from "./bits";
 import { Doodles } from "./decor";
 import { IMAGES } from "./images";
 import { Reveal, RevealItem } from "./motion";
@@ -34,7 +35,7 @@ function Seal() {
           <textPath href="#seal-circle">BONE-A-FIND · BEHAVIOR OBSERVED ·</textPath>
         </text>
       </svg>
-      <PawMark className="size-8" />
+      <Image src="/logo.png" alt="" width={32} height={32} className="size-8 rounded-full" />
     </motion.div>
   );
 }
