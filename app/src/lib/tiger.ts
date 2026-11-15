@@ -27,3 +27,18 @@ export function tiger(): Pool | null {
   g._tiger ??= new Pool({ ...cfg, max: 3, connectionTimeoutMillis: 8000 });
   return g._tiger;
 }
+
+export type DailyBehaviorRow = {
+  bucket: string | Date;
+  avg_stress: number | string | null;
+  avg_energy: number | string | null;
+};
+
+/** Shared read of the real Tiger daily aggregate used by the trend chart and placement readiness. */
+export async function readDailyBehavior(pool: Pool, dogId: string): Promise<DailyBehaviorRow[]> {
+  const { rows } = await pool.query(
+    "SELECT bucket, avg_stress, avg_energy FROM dog_daily WHERE dog_id = $1 ORDER BY bucket",
+    [dogId],
+  );
+  return rows as DailyBehaviorRow[];
+}

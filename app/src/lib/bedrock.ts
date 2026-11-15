@@ -11,18 +11,11 @@ function config() {
 
 export type Written = { text: string; provider: "bedrock" | "gemini"; model: string };
 
-/** Amazon Bedrock first; Gemini only if Bedrock is not configured or fails. Reports which one wrote the text. */
-export async function bedrock(prompt: string): Promise<Written> {
-  const cfg = config();
-  const viaGemini = async (): Promise<Written> => ({
-    text: await gemini("", prompt),
-    provider: "gemini",
-    model: process.env.GEMINI_MODEL || "gemini-3.6-flash",
-  });
-  if (!cfg) {
-    console.warn("[bedrock] BEDROCK_* vars are empty, using Gemini");
-    return viaGemini();
-  }
+export function bedrockConfigured() {
+  return config() !== null;
+}
+
+async function invokeBedrock(prompt: string, cfg: NonNullable<ReturnType<typeof config>>): Promise<Written | null> {
   try {
     client ??= new BedrockRuntimeClient({
       region: cfg.region,
@@ -38,9 +31,32 @@ export async function bedrock(prompt: string): Promise<Written> {
     if (!text.trim()) throw new Error("empty response");
     return { text, provider: "bedrock", model: cfg.modelId };
   } catch (err) {
-    console.warn("[bedrock] call failed, using Gemini:", (err as Error).message);
-    return viaGemini();
+    console.warn("[bedrock] call failed:", (err as Error).message);
+    return null;
   }
+}
+
+/** Bedrock-only path for features whose contract forbids Gemini fallback. */
+export async function bedrockOnly(prompt: string): Promise<Written | null> {
+  const cfg = config();
+  return cfg ? invokeBedrock(prompt, cfg) : null;
+}
+
+/** Amazon Bedrock first; Gemini only if Bedrock is not configured or fails. Reports which one wrote the text. */
+export async function bedrock(prompt: string): Promise<Written> {
+  const cfg = config();
+  if (cfg) {
+    const result = await invokeBedrock(prompt, cfg);
+    if (result) return result;
+    console.warn("[bedrock] using Gemini fallback");
+  } else {
+    console.warn("[bedrock] BEDROCK_* vars are empty, using Gemini");
+  }
+  return {
+    text: await gemini("", prompt),
+    provider: "gemini",
+    model: process.env.GEMINI_MODEL || "gemini-3.6-flash",
+  };
 }
 
 /** "Amazon Bedrock (Nova Lite)" from a model id like "us.amazon.nova-lite-v1:0". */

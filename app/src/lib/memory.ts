@@ -32,12 +32,20 @@ export async function addMemory(tag: string, content: string): Promise<boolean> 
 
 type SearchHit = { memory?: string; chunk?: string; content?: string };
 
-export async function searchMemory(tag: string, q: string): Promise<string> {
+export async function searchMemoryItems(tag: string, q: string): Promise<{ available: boolean; items: string[] }> {
+  if (!process.env.SUPERMEMORY_API_KEY) return { available: false, items: [] };
   // "hybrid" also searches raw document chunks, not just extracted memories (which can lag or be empty).
   const body = { q, containerTag: tag, limit: 8, searchMode: "hybrid" };
   const data = (await post("/v4/search", body)) as { results?: SearchHit[] } | null;
-  return (data?.results ?? [])
+  if (!data) return { available: false, items: [] };
+  const items = (data.results ?? [])
     .map((r) => r.memory ?? r.chunk ?? r.content ?? "")
     .filter(Boolean)
-    .join("\n");
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return { available: true, items };
+}
+
+export async function searchMemory(tag: string, q: string): Promise<string> {
+  return (await searchMemoryItems(tag, q)).items.join("\n");
 }
