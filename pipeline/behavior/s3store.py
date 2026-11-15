@@ -115,6 +115,28 @@ def presign_existing(key: str, *, settings: Optional[Settings] = None) -> Option
         return None
 
 
+def download(key: str, dest: str, *, settings: Optional[Settings] = None) -> str:
+    """Download ``key`` from the bucket to ``dest``. Returns dest. Raises on failure."""
+    settings = settings or load_settings()
+    if not settings.s3_bucket:
+        raise S3Unavailable("S3_BUCKET is not set")
+    Path(dest).parent.mkdir(parents=True, exist_ok=True)
+    _client(settings).download_file(settings.s3_bucket, key, dest)
+    return dest
+
+
+def delete_key(key: str, *, settings: Optional[Settings] = None) -> bool:
+    """Delete one object. Returns True on success, False on any error."""
+    settings = settings or load_settings()
+    if not settings.s3_bucket:
+        return False
+    try:
+        _client(settings).delete_object(Bucket=settings.s3_bucket, Key=key)
+        return True
+    except Exception:
+        return False
+
+
 def thumbnail_key(dog_id: str) -> str:
     return f"thumbnails/{dog_id}.jpg"
 

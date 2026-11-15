@@ -18,6 +18,7 @@ from behavior import api, store_mongo
 
 @pytest.fixture
 def client(monkeypatch):
+    monkeypatch.setenv("PIPELINE_SKIP_WARMUP", "1")  # don't load YOLO in tests
     # Mongo: in-memory fake.
     docs = {
         "luna-01": {

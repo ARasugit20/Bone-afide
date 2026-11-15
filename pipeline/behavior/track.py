@@ -24,6 +24,29 @@ from .schemas import FrameTrack
 from .settings import Settings, load_settings
 
 
+_MODEL_CACHE: dict = {}
+
+
+def get_model(weights: str):
+    """Load (once) and cache a YOLO model by weights path.
+
+    Lets a long-lived server reuse a single loaded model across requests instead of
+    paying the load cost per call. Thread-safe enough for our single-worker server:
+    a redundant load under a race just overwrites the cache with an equivalent model.
+    """
+    model = _MODEL_CACHE.get(weights)
+    if model is None:
+        from ultralytics import YOLO
+        model = YOLO(weights)
+        _MODEL_CACHE[weights] = model
+    return model
+
+
+def warmup_model(weights: str) -> None:
+    """Preload the model so the first request doesn't pay the load cost."""
+    get_model(weights)
+
+
 def select_device() -> str:
     """Pick the best available torch device: Apple MPS, else CUDA, else CPU."""
     try:
@@ -58,15 +81,15 @@ def _run_yolo(
     Returns a list (one entry per input frame) of lists of _RawDetection.
     Frame-by-frame ``.track(persist=True)`` keeps ByteTrack state across the clip.
     """
-    from ultralytics import YOLO
-
-    model = YOLO(weights)
+    model = get_model(weights)
     per_frame: list[list[_RawDetection]] = []
 
-    for sf in frames:
+    for idx, sf in enumerate(frames):
         results = model.track(
             sf.frame,
-            persist=True,
+            # Reset tracker state at the first frame so a reused model never carries
+            # track IDs from a previous clip; persist within the clip after that.
+            persist=(idx > 0),
             classes=[dog_class_id],
             conf=conf,
             tracker="bytetrack.yaml",

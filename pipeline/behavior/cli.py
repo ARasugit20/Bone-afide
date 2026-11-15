@@ -311,34 +311,16 @@ def cmd_run_all(args: argparse.Namespace) -> int:
             seg_list = [(r["scores"], r["features"])]
             seg_days = [day]
 
-        # Write every segment to Tiger as its own day; keep the latest for Mongo.
-        trend = "stable"
-        for d, (sc, _ft) in zip(seg_days, seg_list):
-            if tiger_enabled and tiger is not None:
-                try:
-                    tiger.write_readings(dog_id=dog_id, day=d, hour=hour, scores=sc)
-                except Exception as e:
-                    print(f"  [tiger] write day {d} failed: {type(e).__name__}: {e}")
-        welfare = None
-        if tiger_enabled and tiger is not None:
-            try:
-                tiger.refresh_daily()
-                trend = tiger.compute_trend(dog_id) or "stable"
-                from .welfare import compute_welfare
-                welfare = compute_welfare(tiger.get_trend(dog_id))
-            except Exception as e:
-                print(f"  [tiger] refresh/trend failed: {type(e).__name__}: {e}")
+        # Write every segment to Tiger; compute trend + rows via the shared helper.
+        from . import persist, s3store, store_mongo
+        from .annotate import annotate_clip
+        from .thumbnail import save_thumbnail
 
-        # Latest segment is the headline summary.
         last_day = seg_days[-1]
         scores, features = seg_list[-1]
-        level = assign_level(scores, config_dir=settings.config_dir)
-        needs = derive_needs(scores, features, config_dir=settings.config_dir)
-
-        summary = build_summary(
-            dog_id=dog_id, day=last_day, scores=scores,
-            handling_level=level, trend=trend, needs=needs,
-        )
+        name = clip_name or store_mongo.display_name(dog_id)
+        trend, trend_rows = persist.write_tiger(
+            dog_id, list(zip(seg_days, (sc for sc, _ in seg_list))), hour, settings)
 
         print(f"  per-segment scores: "
               + ", ".join(f"d{d}:E{s.energy}/St{s.stress}/Ap{s.approachability}"
@@ -346,22 +328,15 @@ def cmd_run_all(args: argparse.Namespace) -> int:
 
         out_dir = PIPELINE_ROOT / "data" / "out"
         out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / f"{dog_id}_day{last_day}.json").write_text(json.dumps(summary, indent=2))
 
-        # Thumbnail: clearest detected frame.
-        from .thumbnail import save_thumbnail
+        # Media (annotated video is transcoded to H.264 inside annotate_clip).
         thumb_path = save_thumbnail(r["frames"], r["tracks"], str(out_dir / f"{dog_id}.jpg"))
-
-        # Annotated MP4.
-        from .annotate import annotate_clip
+        level_pre = assign_level(scores, config_dir=settings.config_dir)
         annotated_path = annotate_clip(
-            video, r["tracks"], scores, handling_level=level,
+            video, r["tracks"], scores, handling_level=level_pre,
             out_path=str(out_dir / f"{Path(video).stem}_annotated.mp4"),
             speed_factor=speed_factor, settings=settings,
         )
-
-        # S3 upload + presigned URLs (graceful if unavailable).
-        from . import s3store
         photo_url = video_url = None
         p_key = s3store.thumbnail_key(dog_id)
         v_key = s3store.video_key(dog_id, last_day)
@@ -374,16 +349,18 @@ def cmd_run_all(args: argparse.Namespace) -> int:
         else:
             print("  [s3] no bucket/credentials; skipping media upload")
 
-        # Write to Mongo if configured. Store the exact S3 keys so refresh-urls
-        # presigns what was uploaded, regardless of day/segment numbering.
+        fields = persist.build_doc_fields(
+            dog_id, last_day, scores, features, events,
+            trend=trend, trend_rows=trend_rows, name=name, settings=settings,
+            photo=photo_url, video_url=video_url, photo_key=p_key, video_key=v_key)
+        level = fields["level"]
+        needs = fields["needs"]
+        (out_dir / f"{dog_id}_day{last_day}.json").write_text(json.dumps(fields["summary"], indent=2))
+
         wrote_mongo = False
         if settings.mongo_uri:
             try:
-                from . import store_mongo
-                store_mongo.upsert_summary(summary, photo=photo_url, video_url=video_url,
-                                           photo_key=p_key, video_key=v_key,
-                                           name=clip_name, events=events, welfare=welfare,
-                                           settings=settings)
+                persist.persist_summary(dog_id, fields)
                 wrote_mongo = True
             except Exception as e:
                 print(f"  [mongo] write failed: {type(e).__name__}: {e}")
@@ -391,6 +368,7 @@ def cmd_run_all(args: argparse.Namespace) -> int:
             print("  [mongo] MONGO_URI not set; skipping Mongo write")
 
         print(f"  level={level}  needs={needs}  events={len(events)}"
+              f"  fit_notes={len(fields['fit_notes'])}  not_suited={len(fields['not_suited_for'])}"
               f"  mongo={'yes' if wrote_mongo else 'no'}"
               f"  photo={'yes' if photo_url else 'no'}  video={'yes' if video_url else 'no'}")
         results.append((dog_id, level, needs, wrote_mongo))
@@ -429,27 +407,60 @@ def cmd_reextract_events(args: argparse.Namespace) -> int:
         except Exception as e:
             print(f"  {dog_id}: analyze failed: {type(e).__name__}: {e}")
             continue
-        # Recompute welfare from current Tiger rows too (cheap, no re-write of scores).
-        welfare = None
-        if settings.tiger_dsn:
-            try:
-                from . import store_tiger
-                from .welfare import compute_welfare
-                welfare = compute_welfare(store_tiger.get_trend(dog_id))
-            except Exception as e:
-                print(f"  {dog_id}: [tiger] welfare failed: {type(e).__name__}: {e}")
-
+        # Recompute ALL derived fields (events, welfare, evidence, fit_notes,
+        # not_suited_for, handler, passport_public) from current Tiger rows + the
+        # fresh events, WITHOUT re-uploading media. Reuses the doc's existing scores,
+        # media URLs, and name.
         updated = False
-        if settings.mongo_uri:
+        if settings.mongo_uri and store_mongo.is_owned(dog_id):
+            from . import persist
+            from .evidence import compute_evidence, compute_fit_notes, compute_not_suited_for
+            from .handler import compute_handler
+            from .passport import build_passport
+            from .welfare import compute_welfare
+            from .schemas import Scores
+
+            doc = store_mongo.get_profile(dog_id, settings=settings) or {}
+            sc = Scores(energy=doc.get("energy", 0), stress=doc.get("stress", 0),
+                        approachability=doc.get("approachability", 0),
+                        confidence=doc.get("confidence", 0),
+                        arousal_spikes=doc.get("arousal_spikes", 0))
+            trend_rows = None
+            trend = doc.get("trend", "stable")
+            if settings.tiger_dsn:
+                try:
+                    from . import store_tiger
+                    trend_rows = store_tiger.get_trend(dog_id)
+                    trend = store_tiger.compute_trend(dog_id) or trend
+                except Exception as e:
+                    print(f"  {dog_id}: [tiger] trend failed: {type(e).__name__}: {e}")
+
+            welfare = compute_welfare(trend_rows)
+            evidence = compute_evidence(trend_rows, events, sc, trend=trend)
+            fit_notes = compute_fit_notes(evidence, events)
+            not_suited = compute_not_suited_for(evidence, sc, config_dir=settings.config_dir)
+            handler = compute_handler(doc.get("handling_level", "Yellow"), events, sc,
+                                      config_dir=settings.config_dir)
+            merged = {**doc, "events": events, "evidence": evidence,
+                      "fit_notes": fit_notes, "not_suited_for": not_suited, "trend": trend}
+            passport = build_passport(merged)
+
             col = store_mongo.get_collection(settings)
-            if store_mongo.is_owned(dog_id):
-                set_fields = {"events": events, "updated_at": store_mongo._now_iso()}
-                if welfare is not None:
-                    set_fields["welfare"] = welfare
-                res = col.update_one({"dog_id": dog_id}, {"$set": set_fields})
-                updated = res.matched_count > 0
-        w = welfare["status"] if welfare else "n/a"
-        print(f"  {dog_id}: {len(events)} events  welfare={w}  mongo_updated={updated}")
+            res = col.update_one({"dog_id": dog_id}, {"$set": {
+                "events": events, "welfare": welfare, "evidence": evidence,
+                "fit_notes": fit_notes, "not_suited_for": not_suited,
+                "handler": handler, "passport_public": passport, "trend": trend,
+                "updated_at": store_mongo._now_iso(),
+            }})
+            # Ensure the pose seam default exists on older docs (never clobber).
+            col.update_one({"dog_id": dog_id, "pose": {"$exists": False}},
+                           {"$set": {"pose": {"available": False}}})
+            updated = res.matched_count > 0
+            print(f"  {dog_id}: {len(events)} events  welfare={welfare['status']}  "
+                  f"fit_notes={len(fit_notes)}  not_suited={len(not_suited)}  "
+                  f"handler={handler['min_experience']}  updated={updated}")
+        else:
+            print(f"  {dog_id}: {len(events)} events (no mongo / not owned)")
     return 0
 
 

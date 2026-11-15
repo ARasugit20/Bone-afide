@@ -284,3 +284,120 @@ If the `behavior.report` module exists, returns `report.generate_report(dog_id)`
 ```bash
 curl http://localhost:8000/dogs/luna-01/report
 ```
+
+## 10. `POST /analyze-s3` (live upload with progress)
+
+For direct browser-to-S3 uploads (the live Amplify site uploads the raw clip to S3,
+then calls this with the key). Returns a `job_id` in under 1 second and runs the full
+analysis in the background. The app polls the `pipeline_jobs` Mongo collection
+directly for progress, so the live site needs no further pipeline calls for status.
+
+JSON body: `{s3_key (required), dog_id (required), name?, day?, hour?}`. `dog_id` must
+start with `upload-` or be one of the five owned dogs. `400` otherwise.
+
+```bash
+curl -X POST http://localhost:8000/analyze-s3 -H 'Content-Type: application/json' \
+  -d '{"s3_key": "uploads/raw/upload-rex-01-1699999999.mp4", "dog_id": "upload-rex-01", "name": "Rex", "day": 1, "hour": 9}'
+```
+
+```json
+{"job_id": "d443167af37a41a4b16df4f9180adf90"}
+```
+
+### `pipeline_jobs` schema (poll this collection directly from the app)
+
+```json
+{
+  "job_id": "d443167af37a41a4b16df4f9180adf90",
+  "dog_id": "upload-rex-01",
+  "s3_key": "uploads/raw/upload-rex-01-1699999999.mp4",
+  "stage": "done",
+  "progress": 100,
+  "started_at": "2026-11-15T08:59:33Z",
+  "updated_at": "2026-11-15T08:59:56Z",
+  "stage_timings": {"downloading": 1.9, "detecting": 0.7, "tracking": 7.3, "scoring": 2.8, "saving": 2.8, "uploading_media": 6.0},
+  "error": null,
+  "result": {
+    "dog_id": "upload-rex-01", "name": "Rex", "handling_level": "Orange",
+    "scores": {"energy": 55, "stress": 45, "approachability": 100, "confidence": 100, "arousal_spikes": 1},
+    "events_count": 1, "media_status": "complete"
+  }
+}
+```
+
+Stages in order: `queued, downloading, detecting, tracking, scoring, saving,
+uploading_media, done` (or `failed`). `progress` is 0-100. On error: `stage=failed`,
+`error` is a plain message, `result=null`. A job that is not `done` and older than
+10 minutes reads back as `failed` with `error="Timed out"`. The raw upload is deleted
+from S3 after a successful run; the annotated video and thumbnail are kept.
+
+## 11. `GET /jobs/{job_id}`
+
+Returns the same `pipeline_jobs` doc (for local use; the live app polls Mongo directly).
+`404` if unknown.
+
+```bash
+curl http://localhost:8000/jobs/d443167af37a41a4b16df4f9180adf90
+```
+
+## 12. `GET /dogs/{dog_id}/evidence`  (grounded match evidence)
+
+Returns the dog's match evidence, fit notes, not-suited-for list, and handler
+requirement. All derived from real data (Tiger sessions + events + scores); no LLM.
+
+```bash
+curl http://localhost:8000/dogs/luna-01/evidence
+```
+
+Real response for luna-01 (Lola):
+
+```json
+{
+  "dog_id": "luna-01",
+  "evidence": {
+    "sessions_observed": 4, "calm_sessions": 2, "max_stress": 49, "latest_stress": 49,
+    "jump_count": 1, "rush_count": 2, "calm_seconds": 0, "clip_seconds": 7.6,
+    "pct_time_calm": 0.0, "trend": "stable"
+  },
+  "fit_notes": ["Calm in 2 of 4 sessions.", "Jumped at the fence once in 7 seconds."],
+  "not_suited_for": ["homes with very young children", "doorways without a secure gate"],
+  "handler": {
+    "min_experience": "experienced", "label": "Experienced handlers only",
+    "notes": ["Approach slowly, rushed the front 2 times.", "May jump up at the gate, keep a steady hold.", "High energy, plan an active session."]
+  }
+}
+```
+
+The same `evidence`, `fit_notes`, `not_suited_for`, and `handler` fields are stored on
+the dog doc (readable via `GET /dogs/{dog_id}` / Mongo directly). `handler.min_experience`
+is one of `any | some | experienced | staff` (mapped from the handling level).
+
+## 13. `GET /passport/{dog_id}`  (public adopter/landlord page)
+
+Adopter- and landlord-safe fields only. No staff notes, no vet internals, no S3 keys,
+no breed. Events are reduced to labels + times. The same object is stored on the doc as
+`passport_public` so the app can render the QR page straight from Mongo.
+
+```bash
+curl http://localhost:8000/passport/luna-01
+```
+
+```json
+{
+  "dog_id": "luna-01", "name": "Lola", "photo": "https://.../thumbnails/luna-01.jpg?...",
+  "video_url": "https://.../videos/luna-01_day1.mp4?...", "handling_level": "Orange",
+  "scores": {"energy": 100, "stress": 49, "approachability": 99, "confidence": 100, "arousal_spikes": 7},
+  "needs": ["active home with daily exercise", "owner comfortable with an excitable dog"],
+  "fit_notes": ["Calm in 2 of 4 sessions.", "Jumped at the fence once in 7 seconds."],
+  "not_suited_for": ["homes with very young children", "doorways without a secure gate"],
+  "events": [{"type": "jump", "start_s": 1.85, "end_s": 2.13, "label": "Jumped up at the fence"}],
+  "sessions_observed": 4, "updated_at": "2026-11-15T...", "expert_reviewed": false
+}
+```
+
+## Pose seam (Feature 8)
+
+Every dog doc carries an optional `pose` field, default `{"available": false}`.
+Aditya's pose module (on the `pose-prototype` branch) may later set
+`{"available": true, "keypoints_url": "...", "notes": "..."}`. The pipeline never
+clobbers an existing `pose` object. No other pose behavior exists yet.

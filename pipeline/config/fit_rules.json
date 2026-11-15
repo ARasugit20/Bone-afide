@@ -1,0 +1,10 @@
+{
+  "_comment": "Rules for 'not_suited_for'. Each rule's 'when' maps an evidence/score field to inclusive {min,max} bounds; all conditions must hold. Matching rules contribute their 'text'. Fields available: latest_stress, max_stress, jump_count, rush_count, pct_time_calm, sessions_observed, rising_stress(0/1), energy, stress, approachability, confidence. Text is plain, guardrail-checked, no breed or diagnosis wording. Keep sentences short and factual.",
+  "rules": [
+    {"when": {"latest_stress": {"min": 40}}, "text": "homes with very young children"},
+    {"when": {"jump_count": {"min": 2}}, "text": "first-time owners without a trainer"},
+    {"when": {"rising_stress": {"min": 1}}, "text": "busy multi-pet homes until stress settles"},
+    {"when": {"rush_count": {"min": 2}}, "text": "doorways without a secure gate"},
+    {"when": {"approachability": {"max": 40}}, "text": "homes expecting an immediately social dog"}
+  ]
+}

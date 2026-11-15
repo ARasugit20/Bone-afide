@@ -42,7 +42,25 @@ OUT_DIR = PIPELINE_ROOT / "data" / "out"
 UPLOAD_DIR = PIPELINE_ROOT / "data" / "raw" / "uploads"
 BIAS_DIR = OUT_DIR / "bias"
 
-app = FastAPI(title="Unleashed behavior pipeline", version="0.1.0")
+from contextlib import asynccontextmanager
+import os
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    # Preload the YOLO model once so the first job isn't slowed by model load.
+    # Skipped when PIPELINE_SKIP_WARMUP is set (e.g. during tests).
+    if not os.getenv("PIPELINE_SKIP_WARMUP"):
+        try:
+            from .track import warmup_model
+            warmup_model(load_settings().yolo_weights)
+            log.info("YOLO model warmed up")
+        except Exception:
+            log.exception("model warmup failed (will load lazily)")
+    yield
+
+
+app = FastAPI(title="Unleashed behavior pipeline", version="0.1.0", lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -143,6 +161,69 @@ def dog_profile(dog_id: str) -> dict:
     reviewed = (doc.get("vet_review") or {}).get("status") == "reviewed"
     doc["level_status"] = "reviewed" if reviewed else "provisional"
     return doc
+
+
+# --- live S3 upload jobs -------------------------------------------------------
+
+@app.post("/analyze-s3", dependencies=[Depends(auth_dependency)])
+async def analyze_s3(payload: dict) -> dict:
+    import threading
+    from . import jobs
+
+    settings = load_settings()
+    s3_key = str(payload.get("s3_key", "")).strip()
+    dog_id = str(payload.get("dog_id", "")).strip()
+    if not s3_key or not dog_id:
+        raise HTTPException(status_code=400, detail="s3_key and dog_id are required")
+    if not store_mongo.is_owned(dog_id):
+        raise HTTPException(
+            status_code=400,
+            detail="dog_id must start with 'upload-' or be one of the 5 owned dogs")
+    name = payload.get("name")
+    day = int(payload.get("day", 1))
+    hour = int(payload.get("hour", 0))
+
+    job_id = jobs.create_job(dog_id, s3_key, settings=settings)
+    # Run in a daemon thread (not a BackgroundTask) so the heavy, synchronous YOLO
+    # work does not block the worker from serving /jobs polls. Returns immediately.
+    threading.Thread(
+        target=jobs.run_job, args=(job_id, dog_id, s3_key, name, day, hour),
+        daemon=True,
+    ).start()
+    return {"job_id": job_id}
+
+
+@app.get("/jobs/{job_id}", dependencies=[Depends(auth_dependency)])
+def get_job(job_id: str) -> dict:
+    from . import jobs
+    doc = jobs.get_job(job_id, settings=load_settings())
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"job {job_id} not found")
+    return doc
+
+
+@app.get("/dogs/{dog_id}/evidence", dependencies=[Depends(auth_dependency)])
+def dog_evidence(dog_id: str) -> dict:
+    doc = store_mongo.get_profile(dog_id, settings=load_settings())
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"dog {dog_id} not found")
+    return {
+        "dog_id": dog_id,
+        "evidence": doc.get("evidence", {}),
+        "fit_notes": doc.get("fit_notes", []),
+        "not_suited_for": doc.get("not_suited_for", []),
+        "handler": doc.get("handler", {}),
+    }
+
+
+@app.get("/passport/{dog_id}", dependencies=[Depends(auth_dependency)])
+def dog_passport(dog_id: str) -> dict:
+    from .passport import build_passport
+    doc = store_mongo.get_profile(dog_id, settings=load_settings())
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"dog {dog_id} not found")
+    # Prefer the stored public copy; rebuild from the doc if absent.
+    return doc.get("passport_public") or build_passport(doc)
 
 
 @app.get("/dogs/{dog_id}/events", dependencies=[Depends(auth_dependency)])

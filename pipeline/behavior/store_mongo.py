@@ -88,6 +88,11 @@ def upsert_summary(
     welfare: Optional[dict] = None,
     photo_key: Optional[str] = None,
     video_key: Optional[str] = None,
+    evidence: Optional[dict] = None,
+    fit_notes: Optional[list] = None,
+    not_suited_for: Optional[list] = None,
+    handler: Optional[dict] = None,
+    passport_public: Optional[dict] = None,
     settings: Optional[Settings] = None,
 ) -> dict:
     """Upsert the contract ``summary`` for its dog, appending to a daily history.
@@ -130,6 +135,16 @@ def upsert_summary(
         set_fields["photo_key"] = photo_key
     if video_key is not None:
         set_fields["video_key"] = video_key
+    if evidence is not None:
+        set_fields["evidence"] = evidence
+    if fit_notes is not None:
+        set_fields["fit_notes"] = fit_notes
+    if not_suited_for is not None:
+        set_fields["not_suited_for"] = not_suited_for
+    if handler is not None:
+        set_fields["handler"] = handler
+    if passport_public is not None:
+        set_fields["passport_public"] = passport_public
 
     col.update_one(
         {"dog_id": dog_id},
@@ -144,6 +159,12 @@ def upsert_summary(
     col.update_one(
         {"dog_id": dog_id, "expert_reviewed": {"$exists": False}},
         {"$set": {"expert_reviewed": False}},
+    )
+    # Pose seam (Feature 8): default {available: false}; Aditya's pose module may
+    # later write keypoints_url/notes. Never clobber an existing pose object.
+    col.update_one(
+        {"dog_id": dog_id, "pose": {"$exists": False}},
+        {"$set": {"pose": {"available": False}}},
     )
     doc = col.find_one({"dog_id": dog_id}, {"_id": 0})
     return doc or summary

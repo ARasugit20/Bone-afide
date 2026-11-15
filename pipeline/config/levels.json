@@ -9,5 +9,11 @@
     {"level": "Yellow", "when": {"arousal_spikes": {"min": 8}}},
     {"level": "Green",  "when": {}}
   ],
-  "default": "Yellow"
+  "default": "Yellow",
+  "handler_map": {
+    "Green":  {"min_experience": "any",         "label": "Any trained volunteer"},
+    "Yellow": {"min_experience": "some",        "label": "Volunteers with 3+ months"},
+    "Orange": {"min_experience": "experienced", "label": "Experienced handlers only"},
+    "Red":    {"min_experience": "staff",       "label": "Behavior staff only"}
+  }
 }
