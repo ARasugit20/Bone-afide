@@ -398,5 +398,149 @@
       "jitter": 0.2432,
       "score": 0.1016
     }
+  },
+  "beal": {
+    "meta": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 24.0,
+      "duration": 32.0
+    },
+    "box": [
+      0,
+      172,
+      1539,
+      1074
+    ],
+    "luma": 101.19674797453703,
+    "viewpoint": "side",
+    "processed": {
+      "width": 1920,
+      "height": 1042,
+      "fps": 5,
+      "duration": 8.0
+    },
+    "runs": [
+      {
+        "tag": "beal_p_soff_a0_b0.9",
+        "scale_list": [],
+        "video_adapt": false,
+        "bbox_threshold": 0.9,
+        "seconds": 143.9,
+        "pose": "/Users/adityaranjan/Bone-afide/Bone-afide/pipeline/pose/output/beal_p_soff_a0_b0.9/pose.json",
+        "mean_conf": 0.582,
+        "coverage": 0.45,
+        "jitter": 0.0094,
+        "score": 0.2592
+      }
+    ],
+    "best": {
+      "tag": "beal_p_soff_a0_b0.9",
+      "scale_list": [],
+      "video_adapt": false,
+      "bbox_threshold": 0.9,
+      "seconds": 143.9,
+      "pose": "/Users/adityaranjan/Bone-afide/Bone-afide/pipeline/pose/output/beal_p_soff_a0_b0.9/pose.json",
+      "mean_conf": 0.582,
+      "coverage": 0.45,
+      "jitter": 0.0094,
+      "score": 0.2592
+    }
+  },
+  "jorja": {
+    "meta": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 50.0,
+      "duration": 16.26
+    },
+    "box": [
+      381,
+      24,
+      1523,
+      1080
+    ],
+    "luma": 90.67514390432099,
+    "viewpoint": "oblique",
+    "processed": {
+      "width": 1484,
+      "height": 1080,
+      "fps": 5,
+      "duration": 8.0
+    },
+    "runs": [
+      {
+        "tag": "jorja_p_soff_a0_b0.9",
+        "scale_list": [],
+        "video_adapt": false,
+        "bbox_threshold": 0.9,
+        "seconds": 140.2,
+        "pose": "/Users/adityaranjan/Bone-afide/Bone-afide/pipeline/pose/output/jorja_p_soff_a0_b0.9/pose.json",
+        "mean_conf": 0.588,
+        "coverage": 0.8,
+        "jitter": 0.0187,
+        "score": 0.4619
+      }
+    ],
+    "best": {
+      "tag": "jorja_p_soff_a0_b0.9",
+      "scale_list": [],
+      "video_adapt": false,
+      "bbox_threshold": 0.9,
+      "seconds": 140.2,
+      "pose": "/Users/adityaranjan/Bone-afide/Bone-afide/pipeline/pose/output/jorja_p_soff_a0_b0.9/pose.json",
+      "mean_conf": 0.588,
+      "coverage": 0.8,
+      "jitter": 0.0187,
+      "score": 0.4619
+    }
+  },
+  "noa": {
+    "meta": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 29.97,
+      "duration": 17.17
+    },
+    "box": [
+      118,
+      471,
+      962,
+      1767
+    ],
+    "luma": 138.4398169367284,
+    "viewpoint": "front_or_rear",
+    "processed": {
+      "width": 1080,
+      "height": 1642,
+      "fps": 5,
+      "duration": 8.0
+    },
+    "runs": [
+      {
+        "tag": "noa_p_soff_a0_b0.9",
+        "scale_list": [],
+        "video_adapt": false,
+        "bbox_threshold": 0.9,
+        "seconds": 137.0,
+        "pose": "/Users/adityaranjan/Bone-afide/Bone-afide/pipeline/pose/output/noa_p_soff_a0_b0.9/pose.json",
+        "mean_conf": 0.601,
+        "coverage": 0.825,
+        "jitter": 0.0136,
+        "score": 0.489
+      }
+    ],
+    "best": {
+      "tag": "noa_p_soff_a0_b0.9",
+      "scale_list": [],
+      "video_adapt": false,
+      "bbox_threshold": 0.9,
+      "seconds": 137.0,
+      "pose": "/Users/adityaranjan/Bone-afide/Bone-afide/pipeline/pose/output/noa_p_soff_a0_b0.9/pose.json",
+      "mean_conf": 0.601,
+      "coverage": 0.825,
+      "jitter": 0.0136,
+      "score": 0.489
+    }
   }
 }
