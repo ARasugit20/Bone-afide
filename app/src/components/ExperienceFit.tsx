@@ -29,7 +29,7 @@ export function ExperienceFit({ dog, family }: { dog: Dog; family: Family }) {
         ))}
       </div>
       <p className="mt-1.5 text-[11px] text-muted">
-        Bar = family · ring = {dog.name}&apos;s {dog.handling_level} minimum
+        Bar = family · ring = this dog&apos;s {dog.handling_level} minimum
       </p>
     </div>
   );

@@ -5,6 +5,7 @@ import { Gate } from "@/components/AuthProvider";
 import { Avatar, Bar, Button, Card, Empty, ErrorNote, LevelChip, PageTitle, Spinner } from "@/components/ui";
 import { EVERYONE } from "@/lib/access";
 import { peek, remember } from "@/lib/clientCache";
+import { displayName } from "@/lib/dogs";
 import { diffWords, toRuns, type Token } from "@/lib/diff";
 import type { Dog } from "@/lib/types";
 import { getJSON, LEVELS } from "@/lib/ui";
@@ -109,7 +110,7 @@ function BiasTest() {
               >
                 <Avatar name={d.name} size="h-9 w-9 text-sm" />
                 <span>
-                  <span className="block text-sm font-bold">{d.name}</span>
+                  <span className="block text-sm font-bold">{displayName(d, dogs.data ?? [])}</span>
                   <span className={`text-[11px] ${d.dog_id === dogId ? "text-cream/70" : "text-muted"}`}>{d.handling_level}</span>
                 </span>
               </button>
@@ -151,7 +152,7 @@ function BiasTest() {
         </Card>
       )}
       {error && <ErrorNote message={error} onRetry={() => run()} />}
-      {result && !running && <Results result={result} />}
+      {result && !running && <Results result={result} roster={dogs.data ?? []} />}
       {!result && !running && !error && dogs.data?.length ? (
         <Empty title="Ready when you are" body="Pick a dog and run the test. Results are cached, so the second time is instant." />
       ) : null}
@@ -159,7 +160,7 @@ function BiasTest() {
   );
 }
 
-function Results({ result }: { result: Result }) {
+function Results({ result, roster }: { result: Result; roster: Dog[] }) {
   const [a, b] = result.answers;
   const [ta, tb] = useMemo(() => diffWords(a.text, b.text), [a.text, b.text]);
   const changed = (t: Token[]) => t.filter((x) => x.changed).length;
@@ -212,7 +213,7 @@ function Results({ result }: { result: Result }) {
 
             <div className="mt-5 rounded-2xl bg-cream p-4 ring-1 ring-line">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-bold">Bonafide scores for {d.name}</span>
+                <span className="text-sm font-bold">Bonafide scores for {displayName(d, roster)}</span>
                 <LevelChip level={d.handling_level} />
               </div>
               <div className="space-y-2.5">

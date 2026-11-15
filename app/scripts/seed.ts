@@ -1,25 +1,15 @@
 import { closeDb, db } from "../src/lib/db";
-import { addMemory, dogTag } from "../src/lib/memory";
-import { seedDogs, seedFamilies, seedNotes } from "../src/lib/seed-data";
+import { seedFamilies } from "../src/lib/seed-data";
 
+// Families only. Real dogs now come from the video pipeline, so this never reads or writes `dogs`.
 async function main() {
   const d = await db();
-  await Promise.all(["dogs", "families", "matches", "passports"].map((c) => d.collection(c).deleteMany({})));
-  await d.collection("dogs").insertMany(seedDogs.map((x) => ({ ...x })));
-  await d.collection("families").insertMany(seedFamilies.map((x) => ({ ...x })));
-  await d.collection("dogs").createIndex({ dog_id: 1 }, { unique: true });
-  await d.collection("families").createIndex({ family_id: 1 }, { unique: true });
-  console.log(`Inserted ${seedDogs.length} dogs and ${seedFamilies.length} families`);
-
-  let ok = 0;
-  let total = 0;
-  for (const [dogId, notes] of Object.entries(seedNotes)) {
-    for (const n of notes) {
-      total++;
-      if (await addMemory(dogTag(dogId), `Day ${n.day}, ${n.author}: ${n.text}`)) ok++;
-    }
+  const families = d.collection("families");
+  for (const family of seedFamilies) {
+    await families.updateOne({ family_id: family.family_id }, { $set: family }, { upsert: true });
   }
-  console.log(`Saved ${ok}/${total} volunteer notes to Supermemory`);
+  await families.createIndex({ family_id: 1 }, { unique: true });
+  console.log(`Upserted ${seedFamilies.length} families; dogs collection left untouched`);
 }
 
 main()

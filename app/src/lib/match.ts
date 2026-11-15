@@ -162,3 +162,18 @@ export function matchShelter(dogs: Dog[], families: Family[]) {
 
   return { matches, unmatched, grid };
 }
+
+/**
+ * Why a dog cannot be offered to any current family, or null when at least one family is open
+ * (so being unmatched just means the open families were paired elsewhere).
+ */
+export function fosterReason(dog: Dog, families: Family[]): string | null {
+  if (!families.length || families.some((f) => !scorePair(dog, f).blocked)) return null;
+  if (dog.approachability < MIN_APPROACHABILITY) {
+    return `${dog.name} needs time with the behavior team before meeting adopters`;
+  }
+  if (families.every((f) => f.experience < MIN_EXPERIENCE[dog.handling_level])) {
+    return `${dog.name} is ${dog.handling_level} level and needs a more experienced home for now`;
+  }
+  return "No current family meets this dog's needs yet";
+}

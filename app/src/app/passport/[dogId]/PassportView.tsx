@@ -6,6 +6,7 @@ import { Mascot } from "@/components/Mascot";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge, UpdatedAt } from "@/components/ui";
 import { peek, remember } from "@/lib/clientCache";
+import { displayName } from "@/lib/dogs";
 import type { Dog, Rental } from "@/lib/types";
 import { LEVELS, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
@@ -15,6 +16,7 @@ type Trend = { fake: boolean; series: TrendPoint[] };
 export function PassportView() {
   const { dogId } = useParams<{ dogId: string }>();
   const dog = useApi<Dog>(`/api/dogs/${dogId}`);
+  const roster = useApi<Dog[]>("/api/dogs");
   const trend = useApi<Trend>(`/api/trend/${dogId}`);
   const rentals = useApi<Rental[]>(`/api/rentals?dog_id=${encodeURIComponent(dogId)}`);
   const summary = useSummary(dog.data ? dogId : null);
@@ -23,6 +25,7 @@ export function PassportView() {
   if (dog.error || !dog.data) return <Empty title="Passport not found" body={dog.error ?? "This dog may have already found a home!"} />;
 
   const d = dog.data;
+  const name = displayName(d, roster.data ?? [d]);
   return (
     <article className="mx-auto max-w-3xl space-y-5 print:space-y-3">
       <div className="flex justify-end gap-2 print:hidden">
@@ -36,9 +39,9 @@ export function PassportView() {
           <Mascot className="h-6 w-6" /> Bonafide Behavior Passport
         </div>
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <Avatar name={d.name} size="h-20 w-20 text-3xl" />
+          <Avatar name={name} size="h-20 w-20 text-3xl" />
           <div>
-            <h1 className="font-display text-4xl font-semibold">{d.name}</h1>
+            <h1 className="font-display text-4xl font-semibold">{name}</h1>
             <div className="mt-2 flex flex-wrap gap-2">
               <LevelChip level={d.handling_level} showLabel />
               <TrendBadge trend={d.trend} />
@@ -75,7 +78,7 @@ export function PassportView() {
             {d.needs.length ? d.needs.map((n) => <NeedChip key={n} need={n} />) : <span className="text-sm text-muted">No special needs noted.</span>}
           </div>
           <p className="mt-4 text-sm text-muted">
-            <b className="text-ink">{d.handling_level} level:</b> {LEVELS[d.handling_level].label.toLowerCase()}. Levels describe the home {d.name} needs today, and they change as dogs settle in.
+            <b className="text-ink">{d.handling_level} level:</b> {LEVELS[d.handling_level].label.toLowerCase()}. Levels describe the home {name} needs today, and they change as dogs settle in.
           </p>
         </Card>
       </div>
@@ -96,7 +99,7 @@ export function PassportView() {
       </Card>
 
       <Card className="print:break-inside-avoid print:shadow-none">
-        <h2 className="font-display text-xl font-semibold">Rentals that welcome {d.name}</h2>
+        <h2 className="font-display text-xl font-semibold">Rentals that welcome {name}</h2>
         <p className="mb-3 text-sm text-muted">Pet-friendly listings with no breed restrictions.</p>
         {rentals.loading ? (
           <Spinner label="Looking for welcoming homes…" />
@@ -117,7 +120,7 @@ export function PassportView() {
           </ul>
         ) : (
           <div className="rounded-2xl border-2 border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-            We haven&apos;t gathered rentals for {d.name} yet — ask the shelter team, they&apos;re happy to help you find a dog-friendly place.
+            We haven&apos;t gathered rentals for {name} yet — ask the shelter team, they&apos;re happy to help you find a dog-friendly place.
           </div>
         )}
       </Card>

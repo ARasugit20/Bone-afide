@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge, UpdatedAt } from "@/components/ui";
+import { displayName } from "@/lib/dogs";
 import type { Dog } from "@/lib/types";
 import { getJSON, LEVELS, needsReview, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
@@ -15,6 +16,7 @@ type Trend = { fake: boolean; series: TrendPoint[] };
 export function DogView() {
   const { id } = useParams<{ id: string }>();
   const dog = useApi<Dog>(`/api/dogs/${id}`);
+  const roster = useApi<Dog[]>("/api/dogs");
   const trend = useApi<Trend>(`/api/trend/${id}`);
   const auth = useAuth();
   const [signing, setSigning] = useState(false);
@@ -47,6 +49,7 @@ export function DogView() {
     );
 
   const d = dog.data;
+  const name = displayName(d, roster.data ?? [d]);
   return (
     <div className="space-y-5">
       <Link href="/dogs" className="text-sm font-semibold text-muted hover:text-ink">← All dogs</Link>
@@ -56,7 +59,7 @@ export function DogView() {
           <Avatar name={d.name} size="h-20 w-20 text-3xl" />
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-4xl font-semibold">{d.name}</h1>
+              <h1 className="font-display text-4xl font-semibold">{name}</h1>
               <TrendBadge trend={d.trend} />
               <ReviewBadge dog={d} />
             </div>
@@ -126,19 +129,19 @@ export function DogView() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
-        <AskCard dog={d} />
-        <NoteForm dog={d} />
+        <AskCard dog={d} name={name} />
+        <NoteForm dog={d} name={name} />
       </div>
     </div>
   );
 }
 
-function AskCard({ dog }: { dog: Dog }) {
+function AskCard({ dog, name }: { dog: Dog; name: string }) {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ answer: string; sources: string[] } | null>(null);
-  const suggestions = [`Is ${dog.name} good with kids?`, `How is ${dog.name} on a leash?`, "Okay with cats?"];
+  const suggestions = [`Is ${name} good with kids?`, `How is ${name} on a leash?`, "Okay with cats?"];
 
   async function ask(question: string) {
     if (!question.trim()) return;
@@ -157,13 +160,13 @@ function AskCard({ dog }: { dog: Dog }) {
 
   return (
     <Card>
-      <h2 className="font-display text-xl font-semibold">Ask about {dog.name}</h2>
+      <h2 className="font-display text-xl font-semibold">Ask about {name}</h2>
       <p className="mb-3 text-sm text-muted">Answers come only from staff & volunteer notes.</p>
       <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={`e.g. How does ${dog.name} handle visitors?`}
+          placeholder={`e.g. How does ${name} handle visitors?`}
           className="min-w-0 flex-1 rounded-full border border-line bg-cream px-4 py-2.5 text-sm outline-none focus:border-clay focus:ring-2 focus:ring-clay/20"
         />
         <Button type="submit" loading={loading}>Ask</Button>
@@ -201,7 +204,7 @@ function AskCard({ dog }: { dog: Dog }) {
   );
 }
 
-function NoteForm({ dog }: { dog: Dog }) {
+function NoteForm({ dog, name }: { dog: Dog; name: string }) {
   const [day, setDay] = useState(dog.day);
   const [author, setAuthor] = useState("");
   const [text, setText] = useState("");
@@ -234,7 +237,7 @@ function NoteForm({ dog }: { dog: Dog }) {
           value={text}
           onChange={(e) => { setText(e.target.value); setStatus("idle"); }}
           rows={3}
-          placeholder={`e.g. ${dog.name} walked calmly past the cat room.`}
+          placeholder={`e.g. ${name} walked calmly past the cat room.`}
           className={`${input} resize-none`}
         />
         <div className="flex items-center gap-3">

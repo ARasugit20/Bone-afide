@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { displayName } from "@/lib/dogs";
 import type { Dog } from "@/lib/types";
 import { needsReview } from "@/lib/ui";
 import { Avatar, LevelChip, MiniBar, TrendBadge } from "./ui";
 
-export function DogCard({ dog, compact = false, href }: { dog: Dog; compact?: boolean; href?: string }) {
+export function DogCard({ dog, compact = false, href, roster = [] }: { dog: Dog; compact?: boolean; href?: string; roster?: { name: string; dog_id: string }[] }) {
+  const name = displayName(dog, roster.length ? roster : [dog]);
   return (
     <Link
       href={href ?? `/dogs/${dog.dog_id}`}
@@ -13,7 +15,7 @@ export function DogCard({ dog, compact = false, href }: { dog: Dog; compact?: bo
         <Avatar name={dog.name} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="truncate font-display text-lg font-semibold group-hover:text-clay-dark">{dog.name}</h3>
+            <h3 className="truncate font-display text-lg font-semibold group-hover:text-clay-dark">{name}</h3>
             <LevelChip level={dog.handling_level} />
           </div>
           <p className="text-xs text-muted">

@@ -8,6 +8,8 @@ import { ExperienceFit } from "@/components/ExperienceFit";
 import { FamilyCard } from "@/components/FamilyCard";
 import { Button, Caption, Card, Empty, ErrorNote, PageTitle, Spinner } from "@/components/ui";
 import { EVERYONE } from "@/lib/access";
+import { displayName } from "@/lib/dogs";
+import { fosterReason } from "@/lib/match";
 import type { Dog, Family, Match } from "@/lib/types";
 import { LEVEL_RANK, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
@@ -67,6 +69,12 @@ function MatchPage() {
     .filter((r) => !isFamily || r.fam.family_id === auth.familyId)
     .sort(byLevelThenScore);
   const unmatched = (board.data?.unmatched ?? []).map((id) => dogById.get(id)).filter((d): d is Dog => Boolean(d));
+  const roster = dogs.data ?? [];
+  const foster = unmatched
+    .map((d) => ({ dog: d, reason: fosterReason(d, families.data ?? []) }))
+    .filter((x): x is { dog: Dog; reason: string } => Boolean(x.reason))
+    .map((x) => ({ ...x, reason: x.reason.replace(x.dog.name, displayName(x.dog, roster)) }));
+  const waiting = unmatched.filter((d) => !foster.some((f) => f.dog.dog_id === d.dog_id));
   const hasRun = board.data?.ran || (board.data?.matches.length ?? 0) > 0;
   const dogHref = (d: Dog) => (isFamily ? `/passport/${d.dog_id}` : `/dogs/${d.dog_id}`);
 
@@ -141,7 +149,7 @@ function MatchPage() {
                     className="draw-x absolute left-[20%] right-[20%] top-1/2 hidden h-1 -translate-y-1/2 rounded-full bg-gradient-to-r from-clay/10 via-clay/40 to-clay/10 md:block"
                     style={{ animationDelay: `${i * 90 + 200}ms` }}
                   />
-                  <div className="relative z-10"><DogCard dog={dog} compact href={dogHref(dog)} /></div>
+                  <div className="relative z-10"><DogCard dog={dog} compact href={dogHref(dog)} roster={roster} /></div>
                   <div className="relative z-10 flex flex-row items-center justify-center gap-3 md:flex-col">
                     <div
                       className={`grid h-16 w-16 place-items-center rounded-full text-white shadow-md ring-4 ring-white ${scoreTone(m.score)}`}
@@ -181,26 +189,53 @@ function MatchPage() {
           </section>
 
           {!isFamily && (
-            <section>
-              <div className="mb-3 flex items-center gap-2">
-                <h2 className="font-display text-2xl font-semibold">Needs behavior team / experienced foster</h2>
-                <span className="rounded-full bg-sand px-2.5 py-0.5 text-xs font-bold text-muted">{unmatched.length}</span>
-              </div>
-              {unmatched.length ? (
-                <div className="rounded-3xl border-2 border-dashed border-orange-200 bg-orange-50/40 p-4">
-                  <p className="mb-3 text-sm text-muted">
-                    No waiting family can meet these dogs&apos; needs yet. They&apos;re a great fit for a foster or a behavior-team plan.
-                  </p>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {unmatched.map((d) => <DogCard key={d.dog_id} dog={d} />)}
-                  </div>
+            <div className="space-y-8">
+              <section>
+                <div className="mb-3 flex items-center gap-2">
+                  <h2 className="font-display text-2xl font-semibold">Needs behavior team / experienced foster</h2>
+                  <span className="rounded-full bg-sand px-2.5 py-0.5 text-xs font-bold text-muted">{foster.length}</span>
                 </div>
-              ) : (
-                <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200">
-                  Every dog has a family this round.
-                </p>
-              )}
-            </section>
+                {foster.length ? (
+                  <div className="rounded-3xl border-2 border-dashed border-orange-200 bg-orange-50/40 p-4">
+                    <p className="mb-3 text-sm text-muted">
+                      Blocked for every waiting family by handling level or approachability. A foster or a behavior-team plan comes first.
+                    </p>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {foster.map(({ dog: d, reason }) => (
+                        <div key={d.dog_id}>
+                          <DogCard dog={d} roster={roster} />
+                          <p className="mt-2 px-1 text-sm font-semibold text-amber-900">{reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200">
+                    No dog is blocked for every family this round.
+                  </p>
+                )}
+              </section>
+              <section>
+                <div className="mb-3 flex items-center gap-2">
+                  <h2 className="font-display text-2xl font-semibold">Waiting for the right family</h2>
+                  <span className="rounded-full bg-sand px-2.5 py-0.5 text-xs font-bold text-muted">{waiting.length}</span>
+                </div>
+                {waiting.length ? (
+                  <div className="rounded-3xl border-2 border-dashed border-line bg-white/60 p-4">
+                    <p className="mb-3 text-sm text-muted">
+                      These dogs fit some families, but those families were paired elsewhere. They&apos;re waiting for the next family.
+                    </p>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {waiting.map((d) => <DogCard key={d.dog_id} dog={d} roster={roster} />)}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="rounded-2xl bg-sand px-4 py-3 text-sm text-muted">
+                    Nobody is left over because families ran out.
+                  </p>
+                )}
+              </section>
+            </div>
           )}
         </div>
       )}

@@ -55,7 +55,7 @@ function DogsPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {dogs.map((d, i) => (
             <div key={d.dog_id} className="rise" style={{ animationDelay: `${i * 40}ms` }}>
-              <DogCard dog={d} />
+              <DogCard dog={d} roster={data ?? []} />
             </div>
           ))}
         </div>

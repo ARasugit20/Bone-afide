@@ -68,6 +68,15 @@ function skip(r: unknown, why: string, id?: string): null {
   return null;
 }
 
+/** "Luna · 02" when another dog shares the display name; otherwise just the name. */
+export function displayName(dog: { name: string; dog_id: string }, roster: { name: string; dog_id: string }[]): string {
+  const key = dog.name.trim().toLowerCase();
+  const shared = roster.filter((other) => other.name.trim().toLowerCase() === key).length > 1;
+  if (!shared) return dog.name;
+  const suffix = dog.dog_id.includes("-") ? dog.dog_id.slice(dog.dog_id.lastIndexOf("-") + 1) : dog.dog_id;
+  return `${dog.name} · ${suffix}`;
+}
+
 export async function readDogs(d: Db): Promise<Dog[]> {
   const docs = await d.collection("dogs").find({}, { projection: { _id: 0 } }).toArray();
   return docs.map(normalizeDog).filter((x): x is Dog => x !== null);

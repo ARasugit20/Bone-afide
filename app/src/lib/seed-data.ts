@@ -39,6 +39,12 @@ export const seedFamilies: Family[] = [
   { family_id: "nguyen", name: "The Nguyens", experience: 2, kids: "teens", other_pets: ["dogs"], home: "house_yard", activity: 2, hours_alone: 5 },
   { family_id: "marcus", name: "Marcus", experience: 3, kids: "none", other_pets: [], home: "house_yard", activity: 3, hours_alone: 2, wants: "a project dog he can train" },
   { family_id: "smith", name: "The Smiths", experience: 1, kids: "none", other_pets: ["cats"], home: "apartment", activity: 1, hours_alone: 4 },
+  { family_id: "chen", name: "The Chens", experience: 0, kids: "none", other_pets: ["cats"], home: "apartment", activity: 1, hours_alone: 9, wants: "a calm buddy for slow evening walks" },
+  { family_id: "alvarez", name: "The Alvarezes", experience: 2, kids: "young", other_pets: [], home: "house_yard", activity: 3, hours_alone: 4, wants: "a hiking partner who can keep up with the kids" },
+  { family_id: "okonkwo", name: "Adaeze", experience: 3, kids: "none", other_pets: ["dogs"], home: "house", activity: 2, hours_alone: 3, wants: "a second dog who already knows the ropes" },
+  { family_id: "patel", name: "The Patels", experience: 1, kids: "teens", other_pets: [], home: "house", activity: 2, hours_alone: 7, wants: "a friendly dog the teens can walk after school" },
+  { family_id: "brooks", name: "Jordan Brooks", experience: 0, kids: "none", other_pets: [], home: "apartment", activity: 1, hours_alone: 5, wants: "a quiet first dog for a small apartment" },
+  { family_id: "wright", name: "The Wrights", experience: 2, kids: "none", other_pets: ["small"], home: "house_yard", activity: 3, hours_alone: 6, wants: "an energetic dog who is gentle with their rabbit" },
 ];
 
 export const seedNotes: Record<string, { day: number; author: string; text: string }[]> = {
