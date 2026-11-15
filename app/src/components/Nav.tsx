@@ -2,39 +2,40 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import type { Role } from "@/lib/types";
 import { AccountControl, useAuth } from "./AuthProvider";
-import { DemoToggle } from "./DemoToggle";
+import { prewarm } from "@/lib/prewarm";
 
 const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] }[] = [
-  { href: "/", label: "Dashboard", roles: ["staff", "vet"] },
+  { href: "/", label: "Overview", roles: ["staff", "vet"] },
   { href: "/dogs", label: "Dogs", roles: ["staff", "vet"] },
-  { href: "/match", label: "Match Board", familyLabel: "My Match", roles: ["staff", "vet", "family"] },
-  { href: "/intake", label: "Family Intake", roles: ["staff", "vet", "family"] },
-  { href: "/bias-test", label: "Bias test", roles: ["staff", "vet", "family"] },
+  { href: "/match", label: "Match board", familyLabel: "My match", roles: ["staff", "vet", "family"] },
+  { href: "/intake", label: "Family intake", roles: ["staff", "vet", "family"] },
+  { href: "/bias-test", label: "Bias check", roles: ["staff", "vet", "family"] },
 ];
 
 export function Nav() {
+  // Warm the client cache in the background so pages open instantly. No UI.
+  useEffect(() => {
+    const t = setTimeout(() => void prewarm(), 1500);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <header className="glass-nav z-20 lg:sticky lg:top-0 print:hidden">
-      <div className="mx-auto flex max-w-6xl flex-col gap-2.5 px-4 py-3 sm:px-6 lg:min-h-[72px] lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0">
-        <div className="flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2 rounded-full text-ink" aria-label="Bonafide home">
-            <span className="grid size-9 place-items-center rounded-full bg-logo text-on-dark">
-              <PawIcon className="size-5" />
-            </span>
-            <span className="font-display text-xl font-semibold tracking-tight">Bonafide</span>
-          </Link>
-          <div className="lg:hidden"><DemoToggle /></div>
-        </div>
-        <nav aria-label="Main" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 py-0.5 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:[mask-image:none]">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:h-16 lg:flex-nowrap lg:py-0 lg:px-8">
+        <Link href="/" className="flex items-center gap-2 rounded-full text-ink" aria-label="Bonafide home">
+          <span className="grid size-8 place-items-center rounded-full bg-logo text-on-dark">
+            <PawIcon className="size-4" />
+          </span>
+          <span className="font-display text-lg font-semibold tracking-tight">Bonafide</span>
+        </Link>
+        <nav aria-label="Main" className="no-scrollbar order-3 -mx-1 flex w-full gap-1 overflow-x-auto px-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:order-none lg:w-auto lg:flex-1 lg:[mask-image:none]">
           <Suspense fallback={<Links path={null} />}>
             <ActiveLinks />
           </Suspense>
         </nav>
-        <div className="flex items-center gap-2 lg:shrink-0">
-          <div className="hidden lg:block"><DemoToggle /></div>
+        <div className="ml-auto flex items-center lg:ml-0">
           <AccountControl />
         </div>
       </div>
@@ -54,8 +55,8 @@ function Links({ path }: { path: string | null }) {
       key={l.href}
       href={l.href}
       aria-current={active(l.href) ? "page" : undefined}
-      className={`whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-semibold transition ${
-        active(l.href) ? "bg-forest text-on-dark shadow-glow" : "text-ink hover:bg-forest-tint hover:text-forest"
+      className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+        active(l.href) ? "bg-forest-tint text-forest" : "text-muted hover:text-ink"
       }`}
     >
       {role === "family" && l.familyLabel ? l.familyLabel : l.label}

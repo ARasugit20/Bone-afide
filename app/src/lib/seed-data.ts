@@ -50,8 +50,8 @@ export const seedFamilies: Family[] = [
 export const seedNotes: Record<string, { day: number; author: string; text: string }[]> = {
   "max-01": [
     { day: 1, author: "Jen (volunteer)", text: "Paced the kennel a lot and barked at passing dogs. Took treats gently once he calmed." },
-    { day: 2, author: "Sam (volunteer)", text: "My 8-year-old came along. Max was gentle with her — sat for treats and leaned in for pets. He jumped up once when he got excited, then settled when asked to sit." },
-    { day: 4, author: "Jen (volunteer)", text: "Great on a long walk, pulled at first then loose leash. Stared and whined at the shelter cat — keep him away from cats for now." },
+    { day: 2, author: "Sam (volunteer)", text: "My 8-year-old came along. Max was gentle with her, sat for treats and leaned in for pets. He jumped up once when he got excited, then settled when asked to sit." },
+    { day: 4, author: "Jen (volunteer)", text: "Great on a long walk, pulled at first then loose leash. Stared and whined at the shelter cat. Keep him away from cats for now." },
   ],
   "luna-02": [
     { day: 1, author: "Ana (volunteer)", text: "Quiet and curious. Walked right up for a chin scratch." },
@@ -76,6 +76,6 @@ export const seedNotes: Record<string, { day: number; author: string; text: stri
   "duke-06": [
     { day: 1, author: "Jen (volunteer)", text: "Morning intake: pressed to the back of the kennel, panting and pacing. Wouldn't take treats while anyone stood near the door." },
     { day: 1, author: "Sam (volunteer)", text: "Barked and spun when a family with kids walked by. Needs a behavior plan first and no kids for now." },
-    { day: 1, author: "Kim (staff)", text: "Evening: took two treats tossed from a distance while I sat sideways. A small first step — behavior team to start a plan tomorrow." },
+    { day: 1, author: "Kim (staff)", text: "Evening: took two treats tossed from a distance while I sat sideways. A small first step. Behavior team to start a plan tomorrow." },
   ],
 };

@@ -6,7 +6,7 @@ export const familyTag = (id: string) => `family-${id}`;
 async function post(path: string, body: unknown): Promise<unknown | null> {
   const key = process.env.SUPERMEMORY_API_KEY;
   if (!key) {
-    console.warn("[memory] SUPERMEMORY_API_KEY is empty — skipping Supermemory");
+    console.warn("[memory] SUPERMEMORY_API_KEY is empty, skipping Supermemory");
     return null;
   }
   try {

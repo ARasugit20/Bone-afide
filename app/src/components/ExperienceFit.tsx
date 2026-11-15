@@ -8,10 +8,10 @@ export function ExperienceFit({ dog, family }: { dog: Dog; family: Family }) {
   const ok = family.experience >= need;
   return (
     <div>
-      <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-muted">
+      <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-muted">
         <span>Experience fit</span>
         <span className={ok ? "text-emerald-700" : "text-rose-700"}>
-          {ok ? (family.experience > need ? "More than enough" : "Just right") : "Below what's needed"}
+          {ok ? (family.experience > need ? "Above minimum" : "Meets minimum") : "Below minimum"}
         </span>
       </div>
       <div className="grid grid-cols-4 gap-1">
@@ -28,8 +28,8 @@ export function ExperienceFit({ dog, family }: { dog: Dog; family: Family }) {
           </div>
         ))}
       </div>
-      <p className="mt-1.5 text-[11px] text-muted">
-        Bar = family · ring = this dog&apos;s {dog.handling_level} minimum
+      <p className="mt-1.5 text-xs text-muted">
+        Filled: family experience. Ring: minimum for {dog.handling_level} level.
       </p>
     </div>
   );

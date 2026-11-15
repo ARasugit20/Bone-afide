@@ -4,7 +4,7 @@ import { PassportView } from "./PassportView";
 
 export default function PassportPage() {
   return (
-    <Suspense fallback={<Spinner label="Opening the behavior passport…" />}>
+    <Suspense fallback={<Spinner label="Loading passport" />}>
       <PassportView />
     </Suspense>
   );

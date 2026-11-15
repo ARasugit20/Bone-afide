@@ -26,7 +26,7 @@ export const COGNITO_ENABLED = AUTH_ENABLED && Boolean(POOL_ID && CLIENT_ID);
 if (COGNITO_ENABLED) {
   Amplify.configure({ Auth: { Cognito: { userPoolId: POOL_ID!, userPoolClientId: CLIENT_ID! } } });
 } else if (AUTH_ENABLED && typeof window !== "undefined") {
-  console.warn("[auth] NEXT_PUBLIC_AUTH_ENABLED is true but NEXT_PUBLIC_USER_POOL_* is empty — using the role switcher");
+  console.warn("[auth] NEXT_PUBLIC_AUTH_ENABLED is true but NEXT_PUBLIC_USER_POOL_* is empty, using the role switcher");
 }
 
 type AuthState = {
@@ -111,7 +111,7 @@ function CognitoBridge({ children }: { children: React.ReactNode }) {
 
 export function Gate({ allow, children }: { allow: Role[]; children: React.ReactNode }) {
   const auth = useAuth();
-  if (auth.status === "loading") return <Spinner label="Checking your access…" />;
+  if (auth.status === "loading") return <Spinner label="Loading" />;
   // The Amplify sign-in screen only exists when the auth flag is on.
   if (COGNITO_ENABLED && auth.status === "signedOut") {
     return (
@@ -147,15 +147,15 @@ const ROLES: { id: Role; label: string }[] = [
 export function RoleSwitcher() {
   const auth = useAuth();
   return (
-    <div className="flex items-center gap-1 rounded-full bg-sand p-1" role="group" aria-label="View as role">
-      <span className="px-2 text-[11px] font-bold uppercase tracking-wider text-muted lg:hidden xl:inline">View as</span>
+    <div className="flex items-center gap-0.5 rounded-full bg-sand p-0.5" role="group" aria-label="View as role">
+      <span className="hidden px-2 text-xs text-muted sm:inline">View as</span>
       {ROLES.map((r) => (
         <button
           key={r.id}
           type="button"
           onClick={() => auth.setDemoRole(r.id)}
           aria-pressed={auth.role === r.id}
-          className={`min-h-8 rounded-full px-3 py-1 text-xs font-bold transition ${
+          className={`min-h-8 rounded-full px-3 text-xs font-semibold transition ${
             auth.role === r.id ? "bg-surface text-forest shadow-sm" : "text-muted hover:text-forest"
           }`}
         >

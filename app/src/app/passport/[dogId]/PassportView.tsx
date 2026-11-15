@@ -2,181 +2,263 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Mascot } from "@/components/Mascot";
-import { TrendChart, type TrendPoint } from "@/components/TrendChart";
-import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge, UpdatedAt } from "@/components/ui";
-import { peek, remember } from "@/lib/clientCache";
-import { displayName } from "@/lib/dogs";
-import type { Dog, Rental } from "@/lib/types";
-import { LEVELS, postJSON } from "@/lib/ui";
+import { Bar, Button, Caption, Card, DogPhoto, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, SectionTitle, Skeleton, Source } from "@/components/ui";
+import { formatDateTime } from "@/lib/text";
+import type { Dog, Rental, RentalJob } from "@/lib/types";
+import { getJSON, LEVELS, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
 
-type Trend = { fake: boolean; series: TrendPoint[] };
+type Summary = { summary: string; provider: "bedrock" | "gemini"; label: string };
 
 export function PassportView() {
   const { dogId } = useParams<{ dogId: string }>();
   const dog = useApi<Dog>(`/api/dogs/${dogId}`);
-  const roster = useApi<Dog[]>("/api/dogs");
-  const trend = useApi<Trend>(`/api/trend/${dogId}`);
-  const rentals = useApi<Rental[]>(`/api/rentals?dog_id=${encodeURIComponent(dogId)}`);
-  const summary = useSummary(dog.data ? dogId : null);
 
-  if (dog.loading) return <Spinner label="Opening the behavior passport…" />;
-  if (dog.error || !dog.data) return <Empty title="Passport not found" body={dog.error ?? "This dog may have already found a home!"} />;
+  if (dog.loading) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6" aria-busy="true">
+        <Skeleton className="h-64 rounded-2xl" />
+        <Skeleton className="h-56 rounded-2xl" />
+      </div>
+    );
+  }
+  if (dog.error || !dog.data) return <Empty title="Passport not found" body={dog.error ?? "This dog may have been adopted."} />;
 
   const d = dog.data;
-  const name = displayName(d, roster.data ?? [d]);
+  const name = d.name; // adopter-facing: no staff ID suffix
   return (
-    <article className="mx-auto max-w-3xl space-y-5 print:space-y-3">
-      <div className="flex justify-end gap-2 print:hidden">
-        <CopyLinkButton />
-        <Button variant="ghost" onClick={() => window.print()}>Print</Button>
+    <article className="mx-auto max-w-3xl space-y-6 print:space-y-4">
+      <div className="flex items-center justify-between gap-2 print:hidden">
+        <p className="text-sm font-semibold text-muted">Behavior passport</p>
+        <div className="flex gap-2">
+          <CopyLinkButton />
+          <Button variant="secondary" onClick={() => window.print()}>Print</Button>
+        </div>
       </div>
 
-      <Card className="rise relative overflow-hidden print:shadow-none">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-clay/10 blur-2xl" />
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-clay-dark">
-          <Mascot className="h-6 w-6" /> Bonafide Behavior Passport
-        </div>
-        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <Avatar name={name} size="h-20 w-20 text-3xl" />
+      <Card as="section" className="print:shadow-none">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <DogPhoto dog={d} className="h-24 w-24 sm:h-28 sm:w-28" rounded="rounded-2xl" priority sizes="112px" />
           <div>
-            <h1 className="font-display text-4xl font-semibold">{name}</h1>
+            <h1 className="font-display text-3xl font-semibold tracking-tight">{name}</h1>
             <div className="mt-2 flex flex-wrap gap-2">
               <LevelChip level={d.handling_level} showLabel />
-              <TrendBadge trend={d.trend} />
               <ReviewBadge dog={d} />
             </div>
+            <p className="mt-2 text-sm text-muted">Observed for {d.day} {d.day === 1 ? "day" : "days"} on kennel video. Breed is never recorded.</p>
           </div>
         </div>
-        <div className="mt-5 rounded-2xl bg-cream p-4 ring-1 ring-line">
-          {summary.loading ? (
-            <Spinner rotate />
-          ) : summary.error ? (
-            <ErrorNote message={summary.error} onRetry={summary.retry} />
-          ) : (
-            <p className="font-display text-lg leading-relaxed">{summary.text}</p>
-          )}
-        </div>
+        <PassportSummary dogId={d.dog_id} />
       </Card>
 
-      <div className="grid gap-5 sm:grid-cols-2 print:grid-cols-2">
-        <Card className="print:shadow-none">
-          <h2 className="font-display text-xl font-semibold">Behavior scores</h2>
-          <div className="mt-4 space-y-3.5">
-            <Bar label="Energy" value={d.energy} color="bg-clay" />
-            <Bar label="Stress" value={d.stress} color="bg-sage" delay={80} />
-            <Bar label="Approachability" value={d.approachability} color="bg-tennis" delay={160} />
-            <Bar label="Confidence" value={d.confidence} color="bg-sky-400" delay={240} />
-            <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} delay={320} />
+      <div className="grid gap-6 sm:grid-cols-2 print:grid-cols-2">
+        <Card as="section" className="print:shadow-none">
+          <SectionTitle title="Scores from video" />
+          <div className="space-y-4">
+            <Bar label="Energy" value={d.energy} />
+            <Bar label="Stress" value={d.stress} color="bg-grass" />
+            <Bar label="Approachability" value={d.approachability} color="bg-sky-400" />
+            <Bar label="Confidence" value={d.confidence} color="bg-forest-dark" />
+            <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} hint="per session" color={LEVELS[d.handling_level].dot} />
           </div>
           <Caption className="mt-4" />
         </Card>
-        <Card className="print:shadow-none">
-          <h2 className="font-display text-xl font-semibold">Needs</h2>
-          <div className="mt-3 flex flex-wrap gap-1.5">
+        <Card as="section" className="print:shadow-none">
+          <SectionTitle title="What helps" />
+          <div className="flex flex-wrap gap-2">
             {d.needs.length ? d.needs.map((n) => <NeedChip key={n} need={n} />) : <span className="text-sm text-muted">No special needs noted.</span>}
           </div>
           <p className="mt-4 text-sm text-muted">
-            <b className="text-ink">{d.handling_level} level:</b> {LEVELS[d.handling_level].label.toLowerCase()}. Levels describe the home {name} needs today, and they change as dogs settle in.
+            {d.handling_level} level: {LEVELS[d.handling_level].label.toLowerCase()}. Levels describe the home {name} needs today and change as dogs settle in.
           </p>
         </Card>
       </div>
 
-      <Card className="print:break-inside-avoid print:shadow-none">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-semibold">Settling in</h2>
-          {trend.data?.fake && <span className="rounded-full bg-sand px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">sample data</span>}
-        </div>
-        {trend.loading ? (
-          <Spinner label="Drawing the trend…" />
-        ) : trend.data?.series.length ? (
-          <TrendChart series={trend.data.series} />
-        ) : (
-          <p className="py-6 text-sm text-muted">Trend appears after a few days of video.</p>
-        )}
-        <Caption />
-      </Card>
-
-      <Card className="print:break-inside-avoid print:shadow-none">
-        <h2 className="font-display text-xl font-semibold">Rentals that welcome {name}</h2>
-        <p className="mb-3 text-sm text-muted">Pet-friendly listings. Breed is never recorded.</p>
-        {rentals.loading ? (
-          <Spinner label="Looking for welcoming homes…" />
-        ) : rentals.data?.length ? (
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {rentals.data.map((r) => (
-              <li key={r.url + r.name} className="rounded-2xl bg-cream p-3 ring-1 ring-line">
-                <a href={r.url} target="_blank" rel="noreferrer" className="font-bold hover:text-clay-dark">{r.name}</a>
-                <p className="text-xs text-muted">{r.address}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold">
-                  {r.rent && <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-line">{typeof r.rent === "number" ? `$${r.rent}` : r.rent}</span>}
-                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-800">Dogs welcome</span>
-                  {Number(r.dog_weight_limit_lbs) > 0 && <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-line">Up to {r.dog_weight_limit_lbs} lbs</span>}
-                </div>
-                {r.pet_policy_text && <p className="mt-2 line-clamp-3 text-xs text-ink/70">{r.pet_policy_text}</p>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="rounded-2xl border-2 border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-            We haven&apos;t gathered rentals for {name} yet — ask the shelter team, they&apos;re happy to help you find a dog-friendly place.
-          </div>
-        )}
-      </Card>
-
-      <footer className="pb-4 text-center text-sm text-muted">
-        <p className="font-semibold text-ink">Behavior measured over {d.day} {d.day === 1 ? "day" : "days"}. Breed never recorded.</p>
-        <UpdatedAt iso={d.updated_at} className="mt-1 block" />
-        <p className="mt-1 text-xs">Bonafide · judge the dog, not the label · Decision support, not a diagnosis.</p>
-      </footer>
+      <Rentals dog={d} name={name} />
     </article>
   );
 }
 
-function useSummary(dogId: string | null) {
-  const [state, setState] = useState<{ text: string; error: string | null; loading: boolean }>(() => {
-    const cached = dogId ? peek<{ summary: string }>(`passport:${dogId}`) : undefined;
-    return { text: cached?.summary ?? "", error: null, loading: !cached };
-  });
+function PassportSummary({ dogId }: { dogId: string }) {
+  const [state, setState] = useState<{ data: Summary | null; error: string | null; loading: boolean }>({ data: null, error: null, loading: true });
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    if (!dogId) return;
     let cancelled = false;
-    postJSON<{ summary: string }>(`/api/passport/${dogId}`).then(
-      (r) => {
-        remember(`passport:${dogId}`, r);
-        if (!cancelled) setState({ text: r.summary, error: null, loading: false });
+    postJSON<Summary>(`/api/passport/${dogId}`).then(
+      (data) => {
+        if (!cancelled) setState({ data, error: null, loading: false });
       },
-      (err: Error) => !cancelled && setState({ text: "", error: err.message, loading: false }),
+      (err: Error) => {
+        if (!cancelled) setState({ data: null, error: err.message, loading: false });
+      },
     );
     return () => {
       cancelled = true;
     };
   }, [dogId, nonce]);
 
-  return {
-    ...state,
-    retry: () => {
-      setState({ text: "", error: null, loading: true });
-      setNonce((n) => n + 1);
-    },
-  };
+  return (
+    <div className="mt-6 border-t border-line pt-4">
+      {state.loading ? (
+        <div className="space-y-2"><Skeleton className="h-4" /><Skeleton className="h-4" /><Skeleton className="h-4 w-2/3" /></div>
+      ) : state.error ? (
+        <ErrorNote message={state.error} onRetry={() => { setState({ data: null, error: null, loading: true }); setNonce((n) => n + 1); }} />
+      ) : state.data ? (
+        <>
+          <p className="text-[15px] leading-relaxed">{state.data.summary}</p>
+          <Source className="mt-2">Written by {state.data.label}</Source>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+type RentalState = { rentals: Rental[]; job: RentalJob | null };
+const POLL_MS = 5000;
+const CAP_S = 6 * 60;
+
+function elapsed(fromIso: string, now: number) {
+  const s = Math.max(0, Math.floor((now - new Date(fromIso).getTime()) / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function Rentals({ dog, name }: { dog: Dog; name: string }) {
+  const url = `/api/rentals?dog_id=${encodeURIComponent(dog.dog_id)}`;
+  const state = useApi<RentalState>(url);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [now, setNow] = useState(0); // ticks while searching; never read the clock during prerender
+  const list = state.data?.rentals ?? [];
+  const job = state.data?.job ?? null;
+  const running = job?.status === "running";
+  const fetchedAt = list.map((r) => r.fetched_at).filter(Boolean).sort().at(-1);
+  const { setData } = state;
+
+  // While a search runs: poll every 5 s (the server advances the job) and tick the elapsed clock.
+  useEffect(() => {
+    if (!running) return;
+    const poll = setInterval(() => {
+      getJSON<RentalState>(url).then(setData, () => {});
+    }, POLL_MS);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearInterval(poll);
+      clearInterval(tick);
+    };
+  }, [running, url, setData]);
+
+  async function search() {
+    setStarting(true);
+    setStartError(null);
+    try {
+      const res = await postJSON<{ job: RentalJob }>("/api/rentals", { dog_id: dog.dog_id });
+      setNow(Date.now());
+      setData({ rentals: list, job: res.job });
+    } catch (err) {
+      setStartError((err as Error).message);
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  const failed = job && (job.status === "failed" || job.status === "timed_out") ? job : null;
+
+  return (
+    <Card as="section" className="print:break-inside-avoid print:shadow-none">
+      <SectionTitle
+        title="Rentals that accept this dog"
+        sub={fetchedAt ? `Fetched ${formatDateTime(fetchedAt)}` : `Dog-friendly listings with no breed restrictions, for ${name}'s future home.`}
+        action={
+          !running && (
+            <Button variant="secondary" onClick={search} loading={starting} className="print:hidden">
+              {list.length ? "Refresh" : "Find rentals"}
+            </Button>
+          )
+        }
+      />
+      {running && job && (
+        <p role="status" className="mb-4 flex items-center gap-2 rounded-xl bg-canvas px-4 py-3 text-sm">
+          <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-forest" />
+          <span>Searching rental sites...</span>
+          <span className="ml-auto tabular-nums text-muted">{elapsed(job.started_at, now)} of {CAP_S / 60}:00</span>
+        </p>
+      )}
+      {failed && (
+        <div className="mb-4">
+          <ErrorNote
+            message={failed.status === "timed_out" ? "The search took longer than 6 minutes and was stopped. Listing sites can be slow. Try again." : `The search didn't finish: ${failed.error ?? "unknown error"}`}
+            onRetry={search}
+          />
+        </div>
+      )}
+      {job?.status === "done" && job.kept === 0 && (
+        <p className="mb-3 text-sm text-muted">
+          The last search found {job.found ?? 0} listings, but all had breed restrictions.{list.length ? " Showing the previous results." : ""}
+        </p>
+      )}
+      {startError && <div className="mb-3"><ErrorNote message={startError} onRetry={search} /></div>}
+
+      {state.loading ? (
+        <div className="space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
+      ) : state.error ? (
+        <ErrorNote message={state.error} onRetry={state.reload} />
+      ) : list.length ? (
+        <ul className="divide-y divide-line">
+          {list.map((r) => (
+            <li key={r.url + r.name} className="py-3 first:pt-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p className="font-semibold">{r.name}</p>
+                {r.rent && <p className="text-sm tabular-nums">{typeof r.rent === "number" ? `$${r.rent.toLocaleString()}/mo` : r.rent}</p>}
+              </div>
+              {r.address && <p className="text-sm text-muted">{r.address}</p>}
+              <dl className="mt-1 grid gap-x-4 text-sm sm:grid-cols-[auto_1fr]">
+                <dt className="text-muted">Weight limit</dt>
+                <dd>{weightLimit(r.dog_weight_limit_lbs)}</dd>
+                {r.pet_policy_text && (
+                  <>
+                    <dt className="text-muted">Pet policy</dt>
+                    <dd className="line-clamp-3">{r.pet_policy_text}</dd>
+                  </>
+                )}
+              </dl>
+              <a href={r.url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm font-semibold text-forest hover:underline print:hidden">
+                View listing
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        !running && !job && <p className="text-sm text-muted">No listings gathered yet.</p>
+      )}
+      <Source className="mt-4">Listings gathered by TinyFish web agent</Source>
+    </Card>
+  );
+}
+
+function weightLimit(v: Rental["dog_weight_limit_lbs"]): string {
+  if (v === null || v === undefined || v === "") return "Not listed";
+  if (Number(v) > 0) return `${v} lb`;
+  const t = String(v).trim();
+  return /^none\.?$/i.test(t) ? "None listed" : t;
 }
 
 function CopyLinkButton() {
   const [copied, setCopied] = useState(false);
   return (
     <Button
-      variant="ghost"
+      variant="secondary"
       onClick={async () => {
-        await navigator.clipboard.writeText(window.location.href);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1800);
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1800);
+        } catch {
+          // Clipboard can be blocked; the URL is still in the address bar.
+        }
       }}
     >
-      {copied ? "Link copied ✓" : "Copy link"}
+      {copied ? "Copied" : "Copy link"}
     </Button>
   );
 }

@@ -44,7 +44,7 @@ export const POST = safe(async (req: NextRequest) => {
     cachedOnly = Boolean(body.cached_only);
   }
   if (!dogId) return fail("dog_id is required", 400);
-  if (video && video.size > MAX_BYTES) return fail("That clip is over 20 MB — please trim it.", 413);
+  if (video && video.size > MAX_BYTES) return fail("That clip is over 20 MB. Trim it and try again.", 413);
   if (video && !video.type.startsWith("video/")) return fail("Please upload a video file.", 415);
 
   const d = await db();

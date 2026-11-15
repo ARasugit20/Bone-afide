@@ -62,13 +62,13 @@ async function check(): Promise<Service[]> {
   ]);
 
   return [
-    { name: "MongoDB", configured: mongo, reachable: mongoUp, fallback: mongoUp ? null : "None — dogs, families and matches unavailable" },
-    { name: "Gemini", configured: gemini, reachable: geminiUp, fallback: geminiUp ? null : "None — intake, ask and bias test unavailable" },
+    { name: "MongoDB", configured: mongo, reachable: mongoUp, fallback: mongoUp ? null : "None. Dogs, families and matches unavailable" },
+    { name: "Gemini", configured: gemini, reachable: geminiUp, fallback: geminiUp ? null : "None. Intake, questions and bias check unavailable" },
     { name: "Supermemory", configured: supermemory, reachable: memoryUp, fallback: memoryUp ? null : "Notes not saved; answers say notes don't cover it" },
     { name: "TinyFish", configured: env("TINYFISH_API_KEY"), reachable: null, fallback: env("TINYFISH_API_KEY") ? null : "Rentals script disabled; passport shows empty state" },
     { name: "Bedrock", configured: bedrock, reachable: null, fallback: bedrock ? null : "Gemini writes passport summaries" },
     { name: "Cognito", configured: cognito, reachable: null, fallback: cognito ? null : "Demo role switcher (Staff / Vet / Family)" },
-    { name: "Tiger (trends)", configured: tiger, reachable: tiger ? tigerUp : false, fallback: tigerUp ? null : "Sample 5-day trend (marked “sample data”)" },
+    { name: "Tiger (trends)", configured: tiger, reachable: tiger ? tigerUp : false, fallback: tigerUp ? null : "Stress and energy chart shows an error" },
   ];
 }
 

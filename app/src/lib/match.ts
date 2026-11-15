@@ -46,26 +46,26 @@ export function scorePair(dog: Dog, family: Family): PairScore {
 
   const gap = Math.abs(dog.energy - ENERGY_TARGET[family.activity]);
   score += 20 - 0.5 * gap;
-  if (gap < 15) reasons.push(`${dog.name}'s energy is a lovely fit for your pace of life`);
+  if (gap < 15) reasons.push(`Energy level fits the family's pace`);
 
   if (family.kids === "young") {
     if (dog.arousal_spikes > 3 || dog.approachability < 50) score -= 25;
     else {
       score += 8;
-      reasons.push(`${dog.name} stays steady and friendly — a good match for young kids`);
+      reasons.push(`${dog.name} stays calm and friendly, a good fit for young kids`);
     }
   }
 
   if (dog.stress > 60 && family.home === "apartment") score -= 10;
   if (dog.stress > 60 && family.hours_alone <= 4) {
     score += 6;
-    reasons.push(`Someone home most of the day will help ${dog.name} feel safe`);
+    reasons.push(`Someone is home most of the day, which helps ${dog.name} settle`);
   }
   if (dog.energy > 70 && family.home === "house_yard") {
     score += 6;
     reasons.push(`A yard gives ${dog.name} room to burn off energy`);
   }
-  if (dog.trend === "improving") reasons.push("Stress has dropped since day 1 — settling in");
+  if (dog.trend === "improving") reasons.push("Stress has dropped since day 1");
 
   return {
     score: Math.round(Math.max(0, Math.min(100, score))),

@@ -9,11 +9,19 @@ function config() {
   return { region: BEDROCK_REGION, modelId: BEDROCK_MODEL_ID, keyId: BEDROCK_KEY_ID, secret: BEDROCK_SECRET };
 }
 
-export async function bedrock(prompt: string): Promise<string> {
+export type Written = { text: string; provider: "bedrock" | "gemini"; model: string };
+
+/** Amazon Bedrock first; Gemini only if Bedrock is not configured or fails. Reports which one wrote the text. */
+export async function bedrock(prompt: string): Promise<Written> {
   const cfg = config();
+  const viaGemini = async (): Promise<Written> => ({
+    text: await gemini("", prompt),
+    provider: "gemini",
+    model: process.env.GEMINI_MODEL || "gemini-3.6-flash",
+  });
   if (!cfg) {
-    console.warn("[bedrock] BEDROCK_* vars are empty — falling back to Gemini");
-    return gemini("", prompt);
+    console.warn("[bedrock] BEDROCK_* vars are empty, using Gemini");
+    return viaGemini();
   }
   try {
     client ??= new BedrockRuntimeClient({
@@ -26,9 +34,17 @@ export async function bedrock(prompt: string): Promise<string> {
         messages: [{ role: "user", content: [{ text: prompt }] }],
       }),
     );
-    return res.output?.message?.content?.map((c) => c.text ?? "").join("") ?? "";
+    const text = res.output?.message?.content?.map((c) => c.text ?? "").join("") ?? "";
+    if (!text.trim()) throw new Error("empty response");
+    return { text, provider: "bedrock", model: cfg.modelId };
   } catch (err) {
-    console.warn("[bedrock] call failed — falling back to Gemini:", (err as Error).message);
-    return gemini("", prompt);
+    console.warn("[bedrock] call failed, using Gemini:", (err as Error).message);
+    return viaGemini();
   }
+}
+
+/** "Amazon Bedrock (Nova Lite)" from a model id like "us.amazon.nova-lite-v1:0". */
+export function bedrockLabel(modelId?: string): string {
+  const m = (modelId ?? process.env.BEDROCK_MODEL_ID ?? "").match(/nova-(micro|lite|pro|premier)/i);
+  return m ? `Amazon Bedrock (Nova ${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()})` : "Amazon Bedrock";
 }

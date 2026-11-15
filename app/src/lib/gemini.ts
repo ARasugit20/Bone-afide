@@ -19,7 +19,7 @@ export async function geminiUpload(data: Buffer, mimeType: string): Promise<{ fi
     await new Promise((r) => setTimeout(r, 2000));
     file = await ai().files.get({ name: file.name! });
   }
-  if (file.state !== "ACTIVE" || !file.uri) throw new Error("Gemini couldn't process that clip — try a shorter one.");
+  if (file.state !== "ACTIVE" || !file.uri) throw new Error("Gemini couldn't process that clip. Try a shorter one.");
   return { fileUri: file.uri, mimeType: file.mimeType ?? mimeType };
 }
 

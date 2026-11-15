@@ -6,7 +6,7 @@ import { DogView } from "./DogView";
 
 export default function DogPage() {
   return (
-    <Suspense fallback={<Spinner label="Fetching this pup's profile…" />}>
+    <Suspense fallback={<Spinner label="Loading dog" />}>
       <Gate allow={STAFF_ONLY}>
         <DogView />
       </Gate>

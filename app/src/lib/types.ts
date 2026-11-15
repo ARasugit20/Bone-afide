@@ -13,9 +13,22 @@ export interface Dog {
   handling_level: HandlingLevel;
   trend: "improving" | "stable" | "worsening";
   needs: string[]; // e.g. "no cats yet"
-  photo?: string;
+  photo?: string; // signed S3 URL (thumbnail)
+  video_url?: string; // signed S3 URL (annotated tracking video)
+  behavior_report?: string;
+  behavior_report_at?: string;
+  behavior_report_provider?: string; // "bedrock" when written by Amazon Bedrock
+  behavior_report_by?: string; // display label, e.g. "Amazon Bedrock (Nova Lite)"
   expert_reviewed: boolean;
   updated_at?: string; // ISO; set by the pipeline when present
+}
+
+export interface StaffNote {
+  author: string;
+  note: string;
+  day?: number;
+  created_at?: string;
+  indexed?: boolean; // copied to Supermemory
 }
 
 export type Pet = "cats" | "dogs" | "small";
@@ -42,6 +55,26 @@ export interface Rental {
   dog_weight_limit_lbs: number | string | null;
   pet_policy_text: string;
   url: string;
+  source?: string;
+  fetched_at?: string;
+}
+
+export interface RentalJob {
+  dog_id: string;
+  run_id: string;
+  status: "running" | "done" | "failed" | "timed_out";
+  started_at: string;
+  finished_at?: string;
+  kept?: number;
+  found?: number;
+  error?: string;
+}
+
+export interface MatchRun {
+  ran_at: string;
+  dogs: number;
+  families: number;
+  matches: number;
 }
 
 export interface Match {

@@ -1,81 +1,249 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Gate } from "@/components/AuthProvider";
-import { Avatar, Bar, Button, Card, Empty, ErrorNote, LevelChip, PageTitle, Spinner } from "@/components/ui";
+import { Button, Card, DogPhoto, Empty, ErrorNote, LevelChip, PageHeader, SectionTitle, Skeleton, Source } from "@/components/ui";
 import { EVERYONE } from "@/lib/access";
-import { peek, remember } from "@/lib/clientCache";
-import { displayName } from "@/lib/dogs";
-import { diffWords, toRuns, type Token } from "@/lib/diff";
+import { diffWords, toRuns } from "@/lib/diff";
+import { plain } from "@/lib/text";
 import type { Dog } from "@/lib/types";
-import { getJSON, LEVELS } from "@/lib/ui";
+import { getJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
 
-const MAX_MB = 20;
-
-type Result = {
-  dog: Dog;
-  cached: boolean;
-  model: string;
-  input: { kind: "notes"; count: number; text: string } | { kind: "video"; bytes: number; name?: string };
-  answers: { label: string; text: string }[];
+type Side = {
+  key: string;
+  label: string;
+  prompt: string;
+  avg: Record<string, number>;
+  runs: Record<string, number[]>;
+  descriptions: string[];
+  pipeline: Record<string, number> | null;
 };
+type PipelineBias =
+  | { dog_id: string; available: false }
+  | {
+      dog_id: string;
+      available: true;
+      model: string;
+      runs_per_label: number;
+      sides: Side[];
+      difference: Record<string, number>;
+      run_spread: Record<string, number>;
+      exceeds_noise: Record<string, boolean>;
+      pipeline_identical: boolean;
+    };
+type AppCheck = { model: string; input: { kind: string; count?: number }; answers: { label: string; text: string }[] };
+
+const RATINGS: { key: string; label: string }[] = [
+  { key: "friendliness", label: "Friendliness" },
+  { key: "child_safety", label: "Safe with young kids" },
+  { key: "adoptability", label: "Adoptability" },
+];
+const SCORES: { key: string; label: string }[] = [
+  { key: "energy", label: "Energy" },
+  { key: "stress", label: "Stress" },
+  { key: "approachability", label: "Approachability" },
+  { key: "confidence", label: "Confidence" },
+  { key: "arousal_spikes", label: "Excitement spikes" },
+];
+const PREFERRED = ["kinder-01", "katie-01"];
+const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n));
 
 export default function Page() {
   return (
     <Gate allow={EVERYONE}>
-      <BiasTest />
+      <BiasCheck />
     </Gate>
   );
 }
 
-function BiasTest() {
+function BiasCheck() {
   const dogs = useApi<Dog[]>("/api/dogs");
+  // Only dogs scored from real kennel video can have a pipeline bias report.
+  const real = (dogs.data ?? []).filter((d) => d.photo);
   const [picked, setPicked] = useState<string | null>(null);
-  const [clip, setClip] = useState<File | null>(null);
-  const [clipError, setClipError] = useState<string | null>(null);
+  const dogId = picked ?? PREFERRED.find((id) => real.some((d) => d.dog_id === id)) ?? real[0]?.dog_id ?? null;
+  const dog = real.find((d) => d.dog_id === dogId) ?? null;
+  const report = useApi<PipelineBias>(dogId ? `/api/bias/${dogId}` : null);
+  const selected = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = selected.current;
+    const row = el?.parentElement;
+    if (el && row) row.scrollTo({ left: el.offsetLeft - row.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
+  }, [dogId, real.length]);
+
+  return (
+    <div>
+      <PageHeader
+        title="Bias check"
+        sub="We send the same kennel video to Gemini twice. Only the breed label in the prompt changes."
+      />
+
+      {dogs.loading ? (
+        <div className="mb-6 flex gap-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-32 rounded-full" />)}</div>
+      ) : dogs.error ? (
+        <div className="mb-6"><ErrorNote message={dogs.error} onRetry={dogs.reload} /></div>
+      ) : real.length ? (
+        <div role="tablist" aria-label="Dog" className="no-scrollbar -mx-1 mb-6 flex gap-2 overflow-x-auto px-1 py-1">
+          {real.map((d) => (
+            <button
+              key={d.dog_id}
+              ref={d.dog_id === dogId ? selected : undefined}
+              type="button"
+              role="tab"
+              aria-selected={d.dog_id === dogId}
+              onClick={() => setPicked(d.dog_id)}
+              className={`flex shrink-0 items-center gap-2 rounded-full py-1 pl-1 pr-4 text-sm font-semibold transition ${
+                d.dog_id === dogId ? "bg-forest text-on-dark" : "bg-surface ring-1 ring-line hover:ring-forest"
+              }`}
+            >
+              <DogPhoto dog={d} className="h-8 w-8" rounded="rounded-full" sizes="32px" />
+              {d.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <Empty title="No scored dogs yet" body="Upload a kennel video first. The check needs a real video." />
+      )}
+
+      {dog &&
+        (report.loading ? (
+          <div className="grid gap-6 md:grid-cols-2"><Skeleton className="h-96 rounded-2xl" /><Skeleton className="h-96 rounded-2xl" /></div>
+        ) : report.error ? (
+          <ErrorNote message={report.error} onRetry={report.reload} />
+        ) : report.data?.available ? (
+          <PipelineReport dog={dog} r={report.data} />
+        ) : (
+          <AppFallback dog={dog} />
+        ))}
+    </div>
+  );
+}
+
+function PipelineReport({ dog, r }: { dog: Dog; r: Extract<PipelineBias, { available: true }> }) {
+  const [a, b] = r.sides;
+  const biggest = RATINGS.map((x) => ({ ...x, d: r.difference[x.key] ?? 0 })).sort((p, q) => Math.abs(q.d) - Math.abs(p.d))[0];
+  const spread = Math.max(...Object.values(r.run_spread));
+  const anyBeyondNoise = Object.values(r.exceeds_noise).some(Boolean);
+
+  return (
+    <div className="space-y-6">
+      <Card as="section">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <DogPhoto dog={dog} className="h-20 w-20" rounded="rounded-xl" priority sizes="80px" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display text-xl font-semibold">{dog.name}</h2>
+              <LevelChip level={dog.handling_level} />
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              Same video, {r.runs_per_label} runs per label. The largest gap was {biggest.label.toLowerCase()}: {signed(biggest.d)} points for &quot;{a.label}&quot;.
+              {" "}
+              {anyBeyondNoise
+                ? "That is larger than Gemini's run-to-run spread."
+                : `Gemini's own run-to-run spread was up to ${spread} points, so small gaps are within noise.`}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {[a, b].map((s) => (
+          <Card key={s.key} as="section" className="flex flex-col">
+            <p className="text-sm font-semibold">Label used: {s.label}</p>
+            <p className="mt-0.5 text-xs text-muted">Prompt began: &quot;{plain(s.prompt)}&quot;</p>
+
+            <table className="mt-4 w-full text-sm">
+              <caption className="sr-only">Gemini ratings with the {s.label} label</caption>
+              <thead className="text-left text-xs text-muted">
+                <tr>
+                  <th scope="col" className="pb-2 font-semibold">Gemini rating</th>
+                  <th scope="col" className="pb-2 text-right font-semibold">Average</th>
+                  <th scope="col" className="pb-2 text-right font-semibold">Runs</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line border-t border-line">
+                {RATINGS.map((x) => (
+                  <tr key={x.key}>
+                    <th scope="row" className="py-2 text-left font-normal">{x.label}</th>
+                    <td className="py-2 text-right font-semibold tabular-nums">{fmt(s.avg[x.key])}</td>
+                    <td className="py-2 text-right text-muted tabular-nums">{(s.runs[x.key] ?? []).join(", ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {s.descriptions[0] && (
+              <div className="mt-4 flex-1 rounded-xl bg-canvas p-4">
+                <p className="text-xs font-semibold text-muted">Gemini&apos;s description, run 1</p>
+                <p className="mt-1 text-sm leading-relaxed">{s.descriptions[0]}</p>
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      <Card as="section">
+        <SectionTitle title="Scores from video" sub="Bonafide scores and Gemini ratings for the same video, by label used." />
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs text-muted">
+            <tr>
+              <th scope="col" className="pb-2 font-semibold"><span className="sr-only">Measure</span></th>
+              <th scope="col" className="pb-2 text-right font-semibold capitalize">{a.label}</th>
+              <th scope="col" className="pb-2 pl-2 text-right font-semibold">{b.label}</th>
+              <th scope="col" className="pb-2 pl-2 text-right font-semibold">Diff.</th>
+            </tr>
+          </thead>
+          <tbody className="border-t border-line">
+            <tr><th scope="rowgroup" colSpan={4} className="pb-1 pt-3 text-left text-xs font-semibold text-muted">Bonafide scores</th></tr>
+            {SCORES.map((x) => (
+              <tr key={x.key} className="border-t border-line">
+                <th scope="row" className="py-2 text-left font-normal">{x.label}</th>
+                <td className="py-2 text-right font-semibold tabular-nums">{a.pipeline?.[x.key] ?? "n/a"}</td>
+                <td className="py-2 pl-2 text-right font-semibold tabular-nums">{b.pipeline?.[x.key] ?? "n/a"}</td>
+                <td className="py-2 pl-2 text-right font-semibold tabular-nums">
+                  {a.pipeline && b.pipeline ? signed((a.pipeline[x.key] ?? 0) - (b.pipeline[x.key] ?? 0)) : "n/a"}
+                </td>
+              </tr>
+            ))}
+            <tr className="border-t border-line"><th scope="rowgroup" colSpan={4} className="pb-1 pt-4 text-left text-xs font-semibold text-muted">Gemini ratings (average of {r.runs_per_label})</th></tr>
+            {RATINGS.map((x) => (
+              <tr key={x.key} className="border-t border-line">
+                <th scope="row" className="py-2 text-left font-normal">{x.label}</th>
+                <td className="py-2 text-right tabular-nums">{fmt(a.avg[x.key])}</td>
+                <td className="py-2 pl-2 text-right tabular-nums">{fmt(b.avg[x.key])}</td>
+                <td className="py-2 pl-2 text-right font-semibold tabular-nums">{signed(r.difference[x.key] ?? 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-4 text-sm font-semibold">
+          {r.pipeline_identical
+            ? "Scores don't change with the label because breed is never an input."
+            : "Pipeline scores differed between runs. Check the pipeline output."}
+        </p>
+        <Source className="mt-2">Ratings from {r.model} on the same video. Report produced by the Bonafide pipeline.</Source>
+      </Card>
+    </div>
+  );
+}
+
+/** Used only when the pipeline has no bias report for this dog: asks Gemini about the dog's staff notes twice. */
+function AppFallback({ dog }: { dog: Dog }) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Result | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const dogId = picked ?? dogs.data?.[0]?.dog_id ?? null;
+  const [result, setResult] = useState<AppCheck | null>(null);
 
-  function chooseClip(f: File | null) {
-    setClipError(null);
-    if (f && f.size > MAX_MB * 1024 * 1024) {
-      setClipError(`That clip is ${(f.size / 1048576).toFixed(1)} MB — please keep it under ${MAX_MB} MB.`);
-      return setClip(null);
-    }
-    if (f && !f.type.startsWith("video/")) {
-      setClipError("Please choose a video file.");
-      return setClip(null);
-    }
-    setClip(f);
-  }
-
-  async function run(fresh = false) {
-    if (!dogId) return;
-    const warmed = !clip && !fresh ? peek<Result>(`bias:${dogId}`) : undefined;
-    if (warmed) {
-      setError(null);
-      return setResult(warmed);
-    }
+  async function run() {
     setRunning(true);
     setError(null);
-    setResult(null);
     try {
-      const init: RequestInit = clip
-        ? (() => {
-            const form = new FormData();
-            form.set("dog_id", dogId);
-            form.set("video", clip);
-            if (fresh) form.set("fresh", "1");
-            return { method: "POST", body: form };
-          })()
-        : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dog_id: dogId, fresh }) };
-      const res = await getJSON<Result>("/api/bias-test", init);
-      if (!clip) remember(`bias:${dogId}`, res);
-      setResult(res);
+      setResult(await getJSON<AppCheck>("/api/bias-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dog_id: dog.dog_id }),
+      }));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -85,162 +253,35 @@ function BiasTest() {
 
   return (
     <div className="space-y-6">
-      <PageTitle
-        title="Bias test"
-        sub="Same dog. Same input. We ask a general-purpose AI twice — only the breed label changes."
-      />
-
-      <Card className="rise">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">1 · Pick a dog</p>
-        {dogs.loading ? (
-          <div className="mt-3 flex gap-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 w-32 animate-pulse rounded-2xl bg-sand" />)}</div>
-        ) : dogs.error ? (
-          <div className="mt-3"><ErrorNote message={dogs.error} onRetry={dogs.reload} /></div>
-        ) : !dogs.data?.length ? (
-          <p className="mt-3 text-sm text-muted">No dogs yet — seed the database or connect the pipeline.</p>
-        ) : (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {dogs.data.map((d) => (
-              <button
-                key={d.dog_id}
-                onClick={() => { setPicked(d.dog_id); setResult(null); }}
-                className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-left transition ${
-                  d.dog_id === dogId ? "bg-forest text-on-dark shadow-glow" : "bg-surface ring-1 ring-line hover:ring-forest hover:text-forest"
-                }`}
-              >
-                <Avatar name={d.name} size="h-9 w-9 text-sm" />
-                <span>
-                  <span className="block text-sm font-bold">{displayName(d, dogs.data ?? [])}</span>
-                  <span className={`text-[11px] ${d.dog_id === dogId ? "text-on-dark/75" : "text-muted"}`}>{d.handling_level}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        <p className="mt-5 text-xs font-bold uppercase tracking-wider text-muted">2 · Input (optional clip)</p>
-        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={(e) => chooseClip(e.target.files?.[0] ?? null)} />
-          <Button variant="ghost" onClick={() => fileRef.current?.click()}>{clip ? "Change clip" : "Upload a short clip"}</Button>
-          <span className="text-sm text-muted">
-            {clip ? (
-              <>
-                🎬 {clip.name} · {(clip.size / 1048576).toFixed(1)} MB{" "}
-                <button className="ml-1 font-semibold text-clay-dark underline" onClick={() => { setClip(null); if (fileRef.current) fileRef.current.value = ""; }}>remove</button>
-              </>
-            ) : (
-              `No clip? We'll send this dog's volunteer notes instead. Max ${MAX_MB} MB.`
-            )}
-          </span>
-        </div>
-        {clipError && <p className="mt-2 text-sm font-semibold text-rose-700">{clipError}</p>}
-
-        <div className="mt-5 flex items-center gap-3">
-          <Button onClick={() => run()} loading={running} disabled={!dogId} className="px-6 py-3">
-            {running ? "Asking Gemini twice…" : "Run the bias test"}
-          </Button>
-          {result && !running && (
-            <button onClick={() => run(true)} className="text-xs font-semibold text-muted hover:text-ink">Re-run fresh</button>
-          )}
-        </div>
+      <Card as="section">
+        <SectionTitle
+          title={`No video report for ${dog.name} yet`}
+          sub="Run a quicker check instead: Gemini reads this dog's staff notes twice, once per label."
+          action={<Button onClick={run} loading={running}>{running ? "Running" : result ? "Run again" : "Run check"}</Button>}
+        />
+        {error && <ErrorNote message={error} onRetry={run} />}
       </Card>
-
-      {running && (
-        <Card>
-          <Spinner rotate />
-          <p className="text-xs text-muted">Two identical requests are in flight — one says “pit bull”, one says “lab mix”.{clip ? " Video takes a little longer." : ""}</p>
-        </Card>
-      )}
-      {error && <ErrorNote message={error} onRetry={() => run()} />}
-      {result && !running && <Results result={result} roster={dogs.data ?? []} />}
-      {!result && !running && !error && dogs.data?.length ? (
-        <Empty title="Ready when you are" body="Pick a dog and run the test. Results are cached, so the second time is instant." />
-      ) : null}
+      {result && <AnswerPair result={result} />}
     </div>
   );
 }
 
-function Results({ result, roster }: { result: Result; roster: Dog[] }) {
+function AnswerPair({ result }: { result: AppCheck }) {
   const [a, b] = result.answers;
-  const [ta, tb] = useMemo(() => diffWords(a.text, b.text), [a.text, b.text]);
-  const changed = (t: Token[]) => t.filter((x) => x.changed).length;
-  const loaded = (t: Token[]) => t.filter((x) => x.loaded).map((x) => x.text.replace(/[^\w'-]/g, "").toLowerCase());
-  const d = result.dog;
-
+  const [ta, tb] = useMemo(() => diffWords(plain(a.text), plain(b.text)), [a.text, b.text]);
   return (
-    <section className="rise space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-        <span className="rounded-full bg-sand px-2.5 py-1 font-semibold">
-          Input: {result.input.kind === "video"
-            ? `video clip (${(result.input.bytes / 1048576).toFixed(1)} MB)`
-            : result.input.count ? `${result.input.count} volunteer notes` : "behavior summary (no notes yet)"}
-        </span>
-        <span className="rounded-full bg-sand px-2.5 py-1 font-semibold">{result.model} · temperature 0</span>
-        {result.cached && <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-800">cached</span>}
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {[{ ans: a, tokens: ta, tone: "rose" as const }, { ans: b, tokens: tb, tone: "emerald" as const }].map(({ ans, tokens, tone }) => (
-          <Card key={ans.label} className="flex flex-col">
-            <div className="flex items-center justify-between gap-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${tone === "rose" ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-emerald-50 text-emerald-800 ring-emerald-200"}`}>
-                Told: “This dog is a {ans.label}.”
-              </span>
-              <span className="text-xs text-muted">{changed(tokens)} words differ</span>
-            </div>
-            <p className="mt-1 text-[11px] uppercase tracking-wider text-muted">Gemini&apos;s words, shown as-is</p>
-            <p className="mt-3 flex-1 text-[15px] leading-relaxed">
-              {toRuns(tokens).map((r, i) =>
-                r.kind === "same" ? (
-                  <span key={i}>{r.text}</span>
-                ) : (
-                  <mark
-                    key={i}
-                    className={`box-decoration-clone rounded px-0.5 ${
-                      r.kind === "loaded"
-                        ? "bg-rose-200/80 font-bold text-rose-900 underline decoration-rose-500 decoration-2 underline-offset-2"
-                        : tone === "rose" ? "bg-rose-100 text-ink" : "bg-emerald-100 text-ink"
-                    }`}
-                  >
-                    {r.text}
-                  </mark>
-                ),
-              )}
-            </p>
-            {loaded(tokens).length > 0 && (
-              <p className="mt-3 text-xs text-rose-800">Loaded words only in this version: <b>{[...new Set(loaded(tokens))].join(", ")}</b></p>
+    <div className="grid gap-6 md:grid-cols-2">
+      {[{ ans: a, tokens: ta }, { ans: b, tokens: tb }].map(({ ans, tokens }) => (
+        <Card key={ans.label} as="section">
+          <p className="text-sm font-semibold">Label used: {ans.label === "lab mix" ? "Labrador mix" : ans.label}</p>
+          <p className="mt-3 text-sm leading-relaxed">
+            {toRuns(tokens).map((r, i) =>
+              r.kind === "same" ? <span key={i}>{r.text}</span> : <mark key={i} className={`rounded px-0.5 ${r.kind === "loaded" ? "bg-rose-100 font-semibold text-rose-900" : "bg-amber-50 text-ink"}`}>{r.text}</mark>,
             )}
-
-            <div className="mt-5 rounded-2xl bg-cream p-4 ring-1 ring-line">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-bold">Bonafide scores for {displayName(d, roster)}</span>
-                <LevelChip level={d.handling_level} />
-              </div>
-              <div className="space-y-2.5">
-                <Bar label="Energy" value={d.energy} color="bg-clay" />
-                <Bar label="Stress" value={d.stress} color="bg-sage" />
-                <Bar label="Approachability" value={d.approachability} color="bg-tennis" />
-                <Bar label="Confidence" value={d.confidence} color="bg-sky-400" />
-                <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <div className="section-dark rounded-[28px] px-6 py-5 text-center">
-        <p className="font-display text-2xl font-semibold">Our scores never see breed.</p>
-        <p className="mt-1 text-sm text-on-dark/75">
-          Same numbers in both columns — they come from behavior on video, not a label. Labels above are hypothetical; Bonafide never records breed. Decision support, not a diagnosis.
-        </p>
-      </div>
-
-      {result.input.kind === "notes" && (
-        <details className="text-sm">
-          <summary className="cursor-pointer font-semibold text-clay-dark">See the exact input both requests received</summary>
-          <pre className="mt-2 whitespace-pre-wrap rounded-2xl bg-white p-4 text-xs text-ink/80 ring-1 ring-line">{result.input.text}</pre>
-        </details>
-      )}
-    </section>
+          </p>
+          <Source className="mt-3">Highlighted words differ between the two answers. {result.model}, temperature 0.</Source>
+        </Card>
+      ))}
+    </div>
   );
 }

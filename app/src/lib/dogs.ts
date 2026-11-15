@@ -52,6 +52,10 @@ export function normalizeDog(raw: unknown): Dog | null {
     trend,
     needs,
     ...(typeof r.photo === "string" && r.photo ? { photo: r.photo } : {}),
+    ...(typeof r.video_url === "string" && r.video_url.startsWith("http") ? { video_url: r.video_url } : {}),
+    ...(typeof r.behavior_report === "string" && r.behavior_report.trim() ? { behavior_report: r.behavior_report.trim() } : {}),
+    ...(r.behavior_report_at ? { behavior_report_at: String(r.behavior_report_at) } : {}),
+    ...(typeof r.behavior_report_provider === "string" ? { behavior_report_provider: r.behavior_report_provider } : {}),
     expert_reviewed: r.expert_reviewed === true,
     ...(updated && !isNaN(updated.getTime()) ? { updated_at: updated.toISOString() } : {}),
   };

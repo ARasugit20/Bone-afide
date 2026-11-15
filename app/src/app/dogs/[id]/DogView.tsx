@@ -1,23 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
-import { Avatar, Bar, Button, Caption, Card, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, Spinner, TrendBadge, UpdatedAt } from "@/components/ui";
+import {
+  Bar, Button, ButtonLink, Caption, Card, DogPhoto, Empty, ErrorNote, LevelChip, NeedChip, PageHeader, ReviewBadge, SectionTitle, Skeleton, Source, UpdatedAt,
+} from "@/components/ui";
 import { displayName } from "@/lib/dogs";
-import type { Dog } from "@/lib/types";
+import { formatDateTime, timeAgo } from "@/lib/text";
+import type { Dog, StaffNote } from "@/lib/types";
 import { getJSON, LEVELS, needsReview, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
 
-type Trend = { fake: boolean; series: TrendPoint[] };
+type Trend = { series: TrendPoint[] };
+const FIELD = "w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-forest focus:ring-2 focus:ring-forest/20";
 
 export function DogView() {
   const { id } = useParams<{ id: string }>();
   const dog = useApi<Dog>(`/api/dogs/${id}`);
   const roster = useApi<Dog[]>("/api/dogs");
-  const trend = useApi<Trend>(`/api/trend/${id}`);
   const auth = useAuth();
   const [signing, setSigning] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
@@ -38,119 +40,220 @@ export function DogView() {
     }
   }
 
-  if (dog.loading) return <Spinner label="Fetching this pup's profile…" />;
+  if (dog.loading) return <DogSkeleton />;
   if (dog.error || !dog.data)
     return (
       <Empty
-        title="We couldn't find this dog"
-        body={dog.error ?? "They may have already gone home!"}
-        action={<Link href="/dogs" className="font-bold text-clay-dark underline">Back to all dogs</Link>}
+        title="Dog not found"
+        body={dog.error ?? "This dog may have been adopted or removed."}
+        action={<ButtonLink href="/dogs" variant="secondary">Back to dogs</ButtonLink>}
       />
     );
 
   const d = dog.data;
   const name = displayName(d, roster.data ?? [d]);
   return (
-    <div className="space-y-5">
-      <Link href="/dogs" className="text-sm font-semibold text-muted hover:text-ink">← All dogs</Link>
-
-      <Card className="rise">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <Avatar name={d.name} size="h-20 w-20 text-3xl" />
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-4xl font-semibold">{name}</h1>
-              <TrendBadge trend={d.trend} />
-              <ReviewBadge dog={d} />
-            </div>
-            <p className="text-sm text-muted">
-              Day {d.day} at the shelter · {d.expert_reviewed ? "Reviewed by the behavior team" : "Awaiting behavior team review"}
-            </p>
-            <UpdatedAt iso={d.updated_at} />
-          </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            <Link
-              href={`/passport/${d.dog_id}`}
-              className="inline-flex items-center justify-center rounded-full bg-forest px-5 py-2.5 text-sm font-bold text-on-dark shadow-glow transition hover:bg-forest-dark"
-            >
-              View behavior passport →
-            </Link>
-            {auth.role === "vet" && needsReview(d) && (
-              <Button onClick={signOff} loading={signing}>Expert sign-off</Button>
-            )}
-          </div>
-        </div>
-        {signError && <div className="mt-3"><ErrorNote message={signError} onRetry={signOff} /></div>}
-        <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
-          <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Handling level</p>
+    <div>
+      <PageHeader
+        back={{ href: "/dogs", label: "Dogs" }}
+        title={
+          <span className="flex items-center gap-4">
+            <DogPhoto dog={d} className="h-14 w-14 sm:h-16 sm:w-16" rounded="rounded-2xl" priority />
+            <span>{name}</span>
+          </span>
+        }
+        sub={
+          <span className="mt-2 flex flex-wrap items-center gap-2">
             <LevelChip level={d.handling_level} showLabel />
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Needs</p>
-            <div className="flex flex-wrap gap-1.5">
-              {d.needs.length ? d.needs.map((n) => <NeedChip key={n} need={n} />) : <span className="text-sm text-muted">No special needs noted</span>}
-            </div>
-          </div>
-        </div>
-      </Card>
+            <ReviewBadge dog={d} />
+            <span className="text-sm text-muted">
+              Day {d.day} in shelter{d.updated_at ? ", " : ""}
+              <UpdatedAt iso={d.updated_at} className="text-sm" prefix="scanned" />
+            </span>
+          </span>
+        }
+        actions={
+          <>
+            {auth.role === "vet" && needsReview(d) && <Button onClick={signOff} loading={signing}>Confirm level</Button>}
+            <ButtonLink href={`/passport/${d.dog_id}`} variant="secondary">Behavior passport</ButtonLink>
+          </>
+        }
+      />
+      {signError && <div className="mb-4"><ErrorNote message={signError} onRetry={signOff} /></div>}
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="rise">
-          <h2 className="font-display text-xl font-semibold">Behavior scores</h2>
-          <p className="mb-4 text-sm text-muted">Measured from kennel video over {d.day} days.</p>
-          <div className="space-y-4">
-            <Bar label="Energy" value={d.energy} color="bg-clay" delay={150} />
-            <Bar label="Stress" value={d.stress} color="bg-sage" hint={d.stress > 60 ? "needs a calm start" : undefined} delay={250} />
-            <Bar label="Approachability" value={d.approachability} color="bg-tennis" delay={350} />
-            <Bar label="Confidence" value={d.confidence} color="bg-sky-400" delay={450} />
-            <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} color={LEVELS[d.handling_level].dot} hint="per session" delay={550} />
-          </div>
-          <Caption className="mt-4" />
-        </Card>
-
-        <Card className="rise">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-semibold">Settling in</h2>
-            {trend.data?.fake && (
-              <span className="rounded-full bg-sand px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">sample data</span>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="space-y-6">
+          <Card as="section">
+            <SectionTitle title="Tracking video" sub="YOLO11 tracking with camera-shake compensation." />
+            {d.video_url ? (
+              <>
+                <video
+                  key={d.video_url}
+                  src={d.video_url}
+                  poster={d.photo}
+                  controls
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="aspect-video w-full rounded-xl bg-bark object-contain"
+                />
+                <Source className="mt-2">Tracking video stored on Amazon S3</Source>
+              </>
+            ) : (
+              <Empty title="No tracking video yet" body="Upload a kennel video to create one." action={<ButtonLink href="/upload" variant="secondary">Upload kennel video</ButtonLink>} />
             )}
-          </div>
-          <p className="mb-2 text-sm text-muted">Daily average stress (bold) and energy.</p>
-          {trend.loading ? (
-            <Spinner label="Drawing the trend…" />
-          ) : trend.data?.series.length ? (
-            <TrendChart series={trend.data.series} />
-          ) : (
-            <Empty title="No trend yet" body="Check back after a few days of video." />
-          )}
-          <Caption />
-        </Card>
-      </div>
+          </Card>
 
-      <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
-        <AskCard dog={d} name={name} />
-        <NoteForm dog={d} name={name} />
+          <TrendCard dogId={d.dog_id} />
+
+          <Card as="section">
+            <SectionTitle title="Behavior report" sub={d.behavior_report_at ? `Generated ${formatDateTime(d.behavior_report_at)}` : undefined} />
+            {d.behavior_report ? (
+              <>
+                <p className="whitespace-pre-line text-[15px] leading-relaxed">{d.behavior_report}</p>
+                {d.behavior_report_by && <Source className="mt-3">Written by {d.behavior_report_by}</Source>}
+              </>
+            ) : (
+              <p className="text-sm text-muted">No report yet. The pipeline writes one after it scores a video.</p>
+            )}
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card as="section">
+            <SectionTitle title="Scores from video" sub={`Measured over ${d.day} ${d.day === 1 ? "day" : "days"}.`} />
+            <div className="space-y-4">
+              <Bar label="Energy" value={d.energy} />
+              <Bar label="Stress" value={d.stress} color="bg-grass" />
+              <Bar label="Approachability" value={d.approachability} color="bg-sky-400" />
+              <Bar label="Confidence" value={d.confidence} color="bg-forest-dark" />
+              <Bar label="Excitement spikes" value={d.arousal_spikes} max={10} hint="per session" color={LEVELS[d.handling_level].dot} />
+            </div>
+            <div className="mt-6 border-t border-line pt-4">
+              <p className="mb-2 text-sm font-semibold">Needs</p>
+              <div className="flex flex-wrap gap-2">
+                {d.needs.length ? d.needs.map((n) => <NeedChip key={n} need={n} />) : <span className="text-sm text-muted">None noted.</span>}
+              </div>
+            </div>
+            <Caption className="mt-4" />
+          </Card>
+
+          <NotesCard dog={d} name={d.name} />
+        </div>
       </div>
     </div>
   );
 }
 
-function AskCard({ dog, name }: { dog: Dog; name: string }) {
+function TrendCard({ dogId }: { dogId: string }) {
+  const trend = useApi<Trend>(`/api/trend/${dogId}`);
+  return (
+    <Card as="section">
+      <SectionTitle title="Stress and energy over observation sessions" />
+      {trend.loading ? (
+        <Skeleton className="h-40" />
+      ) : trend.error ? (
+        <ErrorNote message={trend.error} onRetry={trend.reload} />
+      ) : trend.data?.series.length ? (
+        <TrendChart series={trend.data.series} />
+      ) : (
+        <p className="text-sm text-muted">No sessions recorded yet. Readings appear after the first scored video.</p>
+      )}
+      <Source className="mt-3">Time series from Tiger Data</Source>
+    </Card>
+  );
+}
+
+function NotesCard({ dog, name }: { dog: Dog; name: string }) {
+  const notes = useApi<StaffNote[]>(`/api/notes?dog_id=${encodeURIComponent(dog.dog_id)}`);
+  const [author, setAuthor] = useState("");
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await postJSON<{ note: StaffNote; indexed: boolean }>("/api/notes", { dog_id: dog.dog_id, day: dog.day, author, text });
+      notes.setData([res.note, ...(notes.data ?? [])]);
+      setText("");
+      if (!res.indexed) setSaveError("Saved, but search indexing failed. Questions may not find this note yet.");
+    } catch (err) {
+      setSaveError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card as="section" className="space-y-6">
+      <div>
+        <SectionTitle title="Staff notes" />
+        <form onSubmit={add} className="space-y-2">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={2}
+            maxLength={1000}
+            placeholder={`What did you see? For example: ${name} walked calmly past the cat room.`}
+            aria-label="Note"
+            className={`${FIELD} resize-y`}
+          />
+          <div className="flex gap-2">
+            <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Your name" aria-label="Your name" className={`${FIELD} min-w-0 flex-1`} />
+            <Button type="submit" loading={saving} disabled={!text.trim()}>Add note</Button>
+          </div>
+          {saveError && <p className="text-sm text-amber-800">{saveError}</p>}
+        </form>
+
+        <div className="mt-4">
+          {notes.loading ? (
+            <div className="space-y-2"><Skeleton className="h-12" /><Skeleton className="h-12" /></div>
+          ) : notes.error ? (
+            <ErrorNote message={notes.error} onRetry={notes.reload} />
+          ) : notes.data?.length ? (
+            <ol className="relative space-y-4 border-l border-line pl-4">
+              {notes.data.map((n, i) => (
+                <li key={`${n.created_at ?? ""}-${i}`} className="relative">
+                  <span aria-hidden className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-forest" />
+                  <p className="text-sm">{n.note}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {n.author}
+                    {n.day ? `, day ${n.day}` : ""}
+                    {n.created_at ? `, ${timeAgo(n.created_at)}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-sm text-muted">No notes yet.</p>
+          )}
+        </div>
+      </div>
+
+      <AskBox dog={dog} name={name} />
+    </Card>
+  );
+}
+
+function AskBox({ dog, name }: { dog: Dog; name: string }) {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ answer: string; sources: string[] } | null>(null);
-  const suggestions = [`Is ${name} good with kids?`, `How is ${name} on a leash?`, "Okay with cats?"];
+  const [result, setResult] = useState<{ question: string; answer: string; sources: string[] } | null>(null);
 
-  async function ask(question: string) {
-    if (!question.trim()) return;
-    setQ(question);
+  async function ask(e: React.FormEvent) {
+    e.preventDefault();
+    const question = q.trim();
+    if (!question) return;
     setLoading(true);
     setError(null);
-    setResult(null);
     try {
-      setResult(await postJSON("/api/ask", { dog_id: dog.dog_id, question }));
+      const res = await postJSON<{ answer: string; sources: string[] }>("/api/ask", { dog_id: dog.dog_id, question });
+      setResult({ question, ...res });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -159,93 +262,46 @@ function AskCard({ dog, name }: { dog: Dog; name: string }) {
   }
 
   return (
-    <Card>
-      <h2 className="font-display text-xl font-semibold">Ask about {name}</h2>
-      <p className="mb-3 text-sm text-muted">Answers come only from staff & volunteer notes.</p>
-      <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={`e.g. How does ${name} handle visitors?`}
-          className="min-w-0 flex-1 rounded-full border border-line bg-cream px-4 py-2.5 text-sm outline-none focus:border-clay focus:ring-2 focus:ring-clay/20"
-        />
-        <Button type="submit" loading={loading}>Ask</Button>
+    <div className="border-t border-line pt-6">
+      <h3 className="font-display text-lg font-semibold">Ask about this dog</h3>
+      <p className="mt-0.5 text-sm text-muted">Answers use only the staff notes.</p>
+      <form onSubmit={ask} className="mt-3 flex gap-2">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`How is ${name} with visitors?`} aria-label="Question" className={`${FIELD} min-w-0 flex-1`} />
+        <Button type="submit" variant="secondary" loading={loading} disabled={!q.trim()}>Ask</Button>
       </form>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {suggestions.map((s) => (
-          <button key={s} onClick={() => ask(s)} disabled={loading} className="rounded-full bg-sand px-3 py-1 text-xs font-semibold text-ink/70 hover:bg-line disabled:opacity-50">
-            {s}
-          </button>
-        ))}
-      </div>
-
-      {loading && <Spinner rotate />}
-      {error && <div className="mt-3"><ErrorNote message={error} onRetry={() => ask(q)} /></div>}
+      {error && <div className="mt-3"><ErrorNote message={error} /></div>}
       {result && (
-        <div className="rise mt-4 rounded-2xl bg-cream p-4 ring-1 ring-line">
-          <p className="whitespace-pre-line text-sm leading-relaxed">{result.answer}</p>
-          <details className="mt-3 text-sm">
-            <summary className="cursor-pointer font-semibold text-clay-dark">
-              Source notes ({result.sources.length})
-            </summary>
-            {result.sources.length ? (
-              <ul className="mt-2 space-y-2">
+        <div className="mt-4 rounded-xl bg-canvas p-4">
+          <p className="text-xs text-muted">{result.question}</p>
+          <p className="mt-1 text-sm leading-relaxed">{result.answer}</p>
+          {result.sources.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-muted">Notes used</p>
+              <ul className="mt-1 space-y-1">
                 {result.sources.map((s, i) => (
-                  <li key={i} className="rounded-xl bg-white px-3 py-2 text-xs text-ink/80 ring-1 ring-line">{s}</li>
+                  <li key={i} className="border-l-2 border-line pl-2 text-xs text-ink">{s}</li>
                 ))}
               </ul>
-            ) : (
-              <p className="mt-2 text-xs text-muted">No notes matched this question yet.</p>
-            )}
-          </details>
+            </div>
+          )}
         </div>
       )}
-    </Card>
+      <Source className="mt-3">Answers from notes via Supermemory</Source>
+    </div>
   );
 }
 
-function NoteForm({ dog, name }: { dog: Dog; name: string }) {
-  const [day, setDay] = useState(dog.day);
-  const [author, setAuthor] = useState("");
-  const [text, setText] = useState("");
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim()) return;
-    setStatus("saving");
-    try {
-      const res = await postJSON<{ saved: boolean }>("/api/notes", { dog_id: dog.dog_id, day, author: author || "Volunteer", text });
-      setStatus(res.saved ? "saved" : "error");
-      if (res.saved) setText("");
-    } catch {
-      setStatus("error");
-    }
-  }
-
-  const input = "w-full rounded-2xl border border-line bg-cream px-3 py-2 text-sm outline-none focus:border-clay focus:ring-2 focus:ring-clay/20";
+function DogSkeleton() {
   return (
-    <Card>
-      <h2 className="font-display text-xl font-semibold">Add a volunteer note</h2>
-      <p className="mb-3 text-sm text-muted">What did you see today? Describe behavior and needs.</p>
-      <form onSubmit={submit} className="space-y-2.5">
-        <div className="grid grid-cols-[5rem_1fr] gap-2">
-          <input type="number" min={1} value={day} onChange={(e) => setDay(Number(e.target.value))} className={input} aria-label="Day" />
-          <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Your name" className={input} />
-        </div>
-        <textarea
-          value={text}
-          onChange={(e) => { setText(e.target.value); setStatus("idle"); }}
-          rows={3}
-          placeholder={`e.g. ${name} walked calmly past the cat room.`}
-          className={`${input} resize-none`}
-        />
-        <div className="flex items-center gap-3">
-          <Button type="submit" loading={status === "saving"} disabled={!text.trim()}>Save note</Button>
-          {status === "saved" && <span className="text-sm font-semibold text-emerald-700">Saved — thank you! It may take a minute to appear in answers.</span>}
-          {status === "error" && <span className="text-sm font-semibold text-rose-700">Couldn&apos;t save. Please try again.</span>}
-        </div>
-      </form>
-    </Card>
+    <div aria-busy="true" aria-label="Loading dog">
+      <div className="mb-8 flex items-center gap-4">
+        <Skeleton className="h-16 w-16 rounded-2xl" />
+        <div className="space-y-2"><Skeleton className="h-7 w-40" /><Skeleton className="h-5 w-64" /></div>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <div className="space-y-6"><Skeleton className="h-80 rounded-2xl" /><Skeleton className="h-48 rounded-2xl" /></div>
+        <div className="space-y-6"><Skeleton className="h-72 rounded-2xl" /><Skeleton className="h-64 rounded-2xl" /></div>
+      </div>
+    </div>
   );
 }

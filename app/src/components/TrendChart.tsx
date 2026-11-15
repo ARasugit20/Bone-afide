@@ -1,84 +1,67 @@
 "use client";
 
-import { Area, CartesianGrid, ComposedChart, Legend, Line, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export type TrendPoint = { bucket: string; avg_stress: number | string; avg_energy: number | string };
 
 const STRESS = "#2e5e45"; // forest
 const ENERGY = "#5fa8d3"; // sky, deepened for contrast on white
 const AXIS = "#5c6b5f"; // muted-ink
+const GRID = "#dce5d3"; // line
 
+// Buckets are UTC days from the continuous aggregate; format them as UTC so they don't shift a day.
+const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+
+/** Stress and energy per observation session, from the dog_daily continuous aggregate. */
 export function TrendChart({ series }: { series: TrendPoint[] }) {
-  const data = series.map((p, i) => ({
-    label: `Day ${i + 1}`,
-    date: new Date(p.bucket).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+  const data = series.map((p) => ({
+    date: day(p.bucket),
     Stress: Math.round(Number(p.avg_stress)),
     Energy: Math.round(Number(p.avg_energy)),
   }));
   const first = data[0];
   const last = data[data.length - 1];
-  const delta = last && first ? last.Stress - first.Stress : 0;
-  const multi = data.length > 1;
 
+  // One session can't make a line. Show the reading plainly instead of a lone dot.
+  if (data.length === 1) {
+    return (
+      <div>
+        <dl className="grid grid-cols-2 gap-4">
+          <div className="rounded-xl bg-canvas px-4 py-3">
+            <dt className="text-xs text-muted">Stress</dt>
+            <dd className="font-display text-2xl font-semibold tabular-nums">{first.Stress}</dd>
+          </div>
+          <div className="rounded-xl bg-canvas px-4 py-3">
+            <dt className="text-xs text-muted">Energy</dt>
+            <dd className="font-display text-2xl font-semibold tabular-nums">{first.Energy}</dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-sm text-muted">1 session recorded ({first.date}). The chart starts after the next session.</p>
+      </div>
+    );
+  }
+
+  const delta = last.Stress - first.Stress;
   return (
     <div>
-      {multi && (
-        <p
-          className={`mb-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold ${
-            delta < 0 ? "bg-emerald-50 text-emerald-800" : delta > 0 ? "bg-amber-50 text-amber-900" : "bg-stone-100 text-stone-700"
-          }`}
-        >
-          <span aria-hidden>{delta < 0 ? "↓" : delta > 0 ? "↑" : "→"}</span>
-          {delta < 0
-            ? `Stress down ${-delta} points since day 1`
-            : delta > 0
-              ? `Stress up ${delta} points — needs extra support`
-              : "Stress holding steady"}
-        </p>
-      )}
-      <div className="h-64 w-full" role="img" aria-label={`Stress went from ${first?.Stress} on day 1 to ${last?.Stress} on the latest day; energy from ${first?.Energy} to ${last?.Energy}.`}>
+      <p className="mb-2 text-sm text-muted">
+        {data.length} sessions. Stress {delta < 0 ? `down ${-delta}` : delta > 0 ? `up ${delta}` : "unchanged"} since {first.date}.
+      </p>
+      <div
+        className="h-56 w-full"
+        role="img"
+        aria-label={`Stress went from ${first.Stress} on ${first.date} to ${last.Stress} on ${last.date}. Energy from ${first.Energy} to ${last.Energy}.`}
+      >
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 26, right: 34, left: -18, bottom: 0 }}>
-            <defs>
-              <linearGradient id="stressFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={STRESS} stopOpacity={0.28} />
-                <stop offset="100%" stopColor={STRESS} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="#dce5d3" strokeDasharray="4 4" vertical={false} />
-            <XAxis dataKey="label" tick={{ fill: AXIS, fontSize: 12 }} axisLine={false} tickLine={false} />
-            <YAxis domain={[0, 100]} tick={{ fill: AXIS, fontSize: 12 }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ borderRadius: 16, border: "1px solid #dce5d3", background: "#ffffff" }}
-              labelFormatter={(l, p) => `${l} · ${p?.[0]?.payload?.date ?? ""}`}
-            />
+          <LineChart data={data} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="date" tick={{ fill: AXIS, fontSize: 12 }} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 100]} ticks={[0, 50, 100]} tick={{ fill: AXIS, fontSize: 12 }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: 12, border: `1px solid ${GRID}`, background: "#ffffff", fontSize: 12 }} />
             <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-            <Area type="monotone" dataKey="Stress" stroke="none" fill="url(#stressFill)" legendType="none" tooltipType="none" />
-            <Line type="monotone" dataKey="Energy" stroke={ENERGY} strokeOpacity={0.75} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, strokeDasharray: "0" }} activeDot={{ r: 5 }} />
-            <Line type="monotone" dataKey="Stress" stroke={STRESS} strokeWidth={4} dot={{ r: 4, fill: STRESS }} activeDot={{ r: 7 }} />
-            {multi && first && (
-              <ReferenceDot
-                x={first.label}
-                y={first.Stress}
-                r={7}
-                fill="#fff"
-                stroke={STRESS}
-                strokeWidth={3}
-                label={{ value: `Day 1: ${first.Stress}`, position: "top", fill: STRESS, fontSize: 12, fontWeight: 700, offset: 10 }}
-              />
-            )}
-            {multi && last && (
-              <ReferenceDot
-                x={last.label}
-                y={last.Stress}
-                r={7}
-                fill={STRESS}
-                stroke="#fff"
-                strokeWidth={3}
-                label={{ value: `Now: ${last.Stress}`, position: "top", fill: STRESS, fontSize: 12, fontWeight: 700, offset: 10 }}
-              />
-            )}
-          </ComposedChart>
+            <Line type="monotone" dataKey="Stress" stroke={STRESS} strokeWidth={2.5} dot={{ r: 3, fill: STRESS }} activeDot={{ r: 5 }} />
+            <Line type="monotone" dataKey="Energy" stroke={ENERGY} strokeWidth={2} dot={{ r: 3, fill: ENERGY }} activeDot={{ r: 5 }} />
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>

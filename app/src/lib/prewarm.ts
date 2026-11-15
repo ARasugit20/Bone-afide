@@ -2,7 +2,7 @@
 
 import { remember } from "./clientCache";
 import type { Dog } from "./types";
-import { getJSON, postJSON } from "./ui";
+import { getJSON } from "./ui";
 
 export type WarmPhase = "idle" | "warming" | "ready" | "partial";
 
@@ -19,7 +19,7 @@ export function subscribeWarm(cb: () => void) {
   return () => void listeners.delete(cb);
 }
 
-const DEMO_DOG = "max-01";
+const DEMO_DOG = "luna-01";
 // Visiting each page once makes the dev server compile it, so first clicks on stage are instant.
 const PAGES = ["/", "/dogs", `/dogs/${DEMO_DOG}`, "/match", "/intake", "/bias-test", `/passport/${DEMO_DOG}`];
 
@@ -39,16 +39,13 @@ export async function prewarm() {
         dogs.flatMap((d) => [
           load(`/api/dogs/${d.dog_id}`),
           load(`/api/trend/${d.dog_id}`),
-          postJSON<{ answers?: unknown }>("/api/bias-test", { dog_id: d.dog_id, cached_only: true }).then((r) => {
-            if (r.answers) remember(`bias:${d.dog_id}`, r);
-          }),
         ]),
       ),
     ),
     load("/api/families"),
     load("/api/match"),
     load(`/api/rentals?dog_id=${DEMO_DOG}`),
-    postJSON(`/api/passport/${DEMO_DOG}`).then((r) => remember(`passport:${DEMO_DOG}`, r)),
+    load(`/api/notes?dog_id=${DEMO_DOG}`),
     ...PAGES.map((p) => fetch(p).then((r) => r.text())),
   ]);
   set(results.every((r) => r.status === "fulfilled") ? "ready" : "partial");
