@@ -4,6 +4,8 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { TrackingVideo } from "@/components/TrackingVideo";
+import { BehaviorEvidence } from "@/components/BehaviorEvidence";
+import { SessionChange } from "@/components/SessionChange";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import {
   Bar, Button, ButtonLink, Caption, Card, DogPhoto, Empty, ErrorNote, LevelChip, NeedChip, PageHeader, ReviewBadge, SectionTitle, Skeleton, Source, UpdatedAt,
@@ -96,6 +98,7 @@ export function DogView() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="space-y-6">
+          <div id="tracking-evidence">
           <Card as="section">
             <SectionTitle title="Tracking video" sub="YOLO11 tracking with camera-shake compensation." />
             {d.video_url ? (
@@ -109,6 +112,11 @@ export function DogView() {
               <Empty title="No tracking video yet" body="Upload a kennel video to create one." action={<ButtonLink href="/upload" variant="secondary">Upload kennel video</ButtonLink>} />
             )}
           </Card>
+          </div>
+
+          <BehaviorEvidence dog={d} />
+          <SessionChange dogId={d.dog_id} />
+          <ButtonLink href="/interventions" variant="secondary">Track an intervention</ButtonLink>
 
           <TrendCard dogId={d.dog_id} />
 

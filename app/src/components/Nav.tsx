@@ -16,6 +16,8 @@ const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL || "https://bone-a-find.
 const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] }[] = [
   { href: "/overview", label: "Overview", roles: ["staff", "vet"] },
   { href: "/dogs", label: "Dogs", roles: ["staff", "vet"] },
+  { href: "/behavior-review", label: "Review queue", roles: ["staff", "vet"] },
+  { href: "/interventions", label: "Interventions", roles: ["staff", "vet"] },
   { href: "/match", label: "Match board", familyLabel: "My match", roles: ["staff", "vet", "family"] },
   { href: "/care", label: "Care", roles: ["staff", "vet"] },
   { href: "/food", label: "Food", roles: ["staff", "vet"] },
@@ -24,6 +26,8 @@ const LINKS: { href: string; label: string; familyLabel?: string; roles: Role[] 
   { href: "/alumni", label: "Alumni", roles: ["staff", "vet", "family"] },
   { href: "/intake", label: "Family intake", roles: ["staff", "vet", "family"] },
   { href: "/bias-test", label: "Bias check", roles: ["staff", "vet", "family"] },
+  { href: "/robustness-audit", label: "Label audit", roles: ["staff", "vet"] },
+  { href: "/model-card", label: "Transparency", roles: ["staff", "vet", "family"] },
 ];
 
 export function Nav() {

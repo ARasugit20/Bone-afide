@@ -27,6 +27,7 @@ export interface Dog {
   not_suited_for?: string[]; // e.g. "homes with very young children"
   handler?: Handler; // who can handle this dog day to day
   pose?: Pose; // optional SuperAnimal pose summary; off by default (POSE_ENABLED)
+  pipeline_version?: string; // optional provenance tag when the pipeline persists one
   expert_reviewed: boolean;
   updated_at?: string; // ISO; set by the pipeline when present
 }
@@ -65,6 +66,7 @@ export interface Evidence {
   clip_seconds: number;
   pct_time_calm: number;
   trend: string;
+  detection_coverage?: number; // optional; not present in the current persisted evidence contract
 }
 
 export interface Handler {
