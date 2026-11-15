@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect } from "react";
@@ -30,9 +31,7 @@ export function Nav() {
     <header className="glass-nav z-20 lg:sticky lg:top-0 print:hidden">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:h-16 lg:flex-nowrap lg:py-0 lg:px-8">
         <Link href="/" className="flex items-center gap-2 rounded-full text-ink" aria-label="Bone-a-find home">
-          <span className="grid size-8 place-items-center rounded-full bg-logo text-on-dark">
-            <PawIcon className="size-4" />
-          </span>
+          <Image src="/logo.png" alt="" width={32} height={32} className="size-8 rounded-full" priority />
           <span className="font-display text-lg font-semibold tracking-tight">Bone-a-find</span>
         </Link>
         <nav aria-label="Main" className="no-scrollbar order-3 -mx-1 flex w-full gap-1 overflow-x-auto px-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:order-none lg:w-auto lg:flex-1 lg:[mask-image:none]">

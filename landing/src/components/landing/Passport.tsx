@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Accent, Eyebrow, LevelChip, PawMark } from "./bits";
+import { Accent, Eyebrow, LevelChip } from "./bits";
 import { Doodles } from "./decor";
 import { IMAGES } from "./images";
 import { Reveal, RevealItem } from "./motion";
@@ -28,11 +28,11 @@ function Seal() {
           <path id="seal-circle" d="M50,50 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0" />
         </defs>
         <circle cx="50" cy="50" r="46" fill="none" className="stroke-on-dark/40" strokeWidth="1" strokeDasharray="2 3" />
-        <text className="fill-on-dark" style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 2.2 }}>
-          <textPath href="#seal-circle">BONAFIDE · BEHAVIOR VERIFIED ·</textPath>
+        <text className="fill-on-dark" style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.8 }}>
+          <textPath href="#seal-circle">BONE-A-FIND · BEHAVIOR VERIFIED ·</textPath>
         </text>
       </svg>
-      <PawMark className="size-8" />
+      <img src="/logo.png" alt="" className="size-10 rounded-full" />
     </motion.div>
   );
 }

@@ -43,7 +43,11 @@ export function PublicPassportView() {
   return (
     <article className="space-y-8">
       <header>
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted">Bone-a-find behavior passport</p>
+        <div className="flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" width={28} height={28} className="size-7 rounded-full" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">Bone-a-find behavior passport</p>
+        </div>
         <DogPhoto dog={p} className="mt-3 aspect-[4/3] w-full" rounded="rounded-2xl" sizes="(min-width: 672px) 640px, 100vw" priority />
         <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight">{p.name}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
