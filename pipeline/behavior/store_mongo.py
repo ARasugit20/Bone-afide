@@ -86,6 +86,8 @@ def upsert_summary(
     name: Optional[str] = None,
     events: Optional[list] = None,
     welfare: Optional[dict] = None,
+    photo_key: Optional[str] = None,
+    video_key: Optional[str] = None,
     settings: Optional[Settings] = None,
 ) -> dict:
     """Upsert the contract ``summary`` for its dog, appending to a daily history.
@@ -122,6 +124,12 @@ def upsert_summary(
         set_fields["events"] = events
     if welfare is not None:
         set_fields["welfare"] = welfare
+    # Persist the exact S3 object keys so refresh-urls presigns what was uploaded,
+    # independent of day/segment numbering in any config file.
+    if photo_key is not None:
+        set_fields["photo_key"] = photo_key
+    if video_key is not None:
+        set_fields["video_key"] = video_key
 
     col.update_one(
         {"dog_id": dog_id},
@@ -210,9 +218,10 @@ def set_vet_review(
 
 def set_media_urls(
     dog_id: str, *, photo: Optional[str] = None, video_url: Optional[str] = None,
+    photo_key: Optional[str] = None, video_key: Optional[str] = None,
     settings: Optional[Settings] = None,
 ) -> Optional[dict]:
-    """Update only the media URLs (used by refresh-urls). Owned dogs only."""
+    """Update only the media URLs/keys (used by refresh-urls). Owned dogs only."""
     if not is_owned(dog_id):
         raise ValueError(f"refusing to write non-owned dog_id {dog_id!r}")
     set_fields = {"updated_at": _now_iso()}
@@ -220,6 +229,10 @@ def set_media_urls(
         set_fields["photo"] = photo
     if video_url is not None:
         set_fields["video_url"] = video_url
+    if photo_key is not None:
+        set_fields["photo_key"] = photo_key
+    if video_key is not None:
+        set_fields["video_key"] = video_key
     col = get_collection(settings)
     res = col.update_one({"dog_id": dog_id}, {"$set": set_fields})
     if res.matched_count == 0:

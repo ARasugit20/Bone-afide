@@ -83,6 +83,22 @@ def test_display_name():
     assert store_mongo.display_name("kacy-01") == "Kacy"
 
 
+def test_media_keys_are_stored(fake_collection):
+    store_mongo.upsert_summary(_summary(4), photo_key="thumbnails/june-01.jpg",
+                               video_key="videos/june-01_day4.mp4")
+    assert fake_collection.doc["photo_key"] == "thumbnails/june-01.jpg"
+    assert fake_collection.doc["video_key"] == "videos/june-01_day4.mp4"
+
+
+def test_set_media_urls_persists_keys(fake_collection):
+    store_mongo.upsert_summary(_summary(1))
+    store_mongo.set_media_urls("june-01", photo="http://p", video_url="http://v",
+                               photo_key="thumbnails/june-01.jpg",
+                               video_key="videos/june-01_day1.mp4")
+    assert fake_collection.doc["video_key"] == "videos/june-01_day1.mp4"
+    assert fake_collection.doc["video_url"] == "http://v"
+
+
 def test_name_override_and_events(fake_collection):
     events = [{"type": "jump", "start_s": 1.0, "end_s": 1.3, "label": "Jumped up at the fence"}]
     store_mongo.upsert_summary(_summary(1), name="Lola", events=events)

@@ -195,7 +195,9 @@ def _upload_media_bg(dog_id: str, day: int, thumb_path: Optional[str],
         log.exception("S3 upload failed for %s", dog_id)
     try:
         col = store_mongo.get_collection(settings)
-        set_fields = {"media_status": "complete", "updated_at": store_mongo._now_iso()}
+        set_fields = {"media_status": "complete", "updated_at": store_mongo._now_iso(),
+                      "photo_key": s3store.thumbnail_key(dog_id),
+                      "video_key": s3store.video_key(dog_id, day)}
         if photo:
             set_fields["photo"] = photo
         if video:

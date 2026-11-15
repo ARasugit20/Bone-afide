@@ -363,23 +363,25 @@ def cmd_run_all(args: argparse.Namespace) -> int:
         # S3 upload + presigned URLs (graceful if unavailable).
         from . import s3store
         photo_url = video_url = None
+        p_key = s3store.thumbnail_key(dog_id)
+        v_key = s3store.video_key(dog_id, last_day)
         if s3store.available(settings):
             if thumb_path:
                 photo_url = s3store.upload_and_presign(
-                    thumb_path, s3store.thumbnail_key(dog_id),
-                    content_type="image/jpeg", settings=settings)
+                    thumb_path, p_key, content_type="image/jpeg", settings=settings)
             video_url = s3store.upload_and_presign(
-                annotated_path, s3store.video_key(dog_id, last_day),
-                content_type="video/mp4", settings=settings)
+                annotated_path, v_key, content_type="video/mp4", settings=settings)
         else:
             print("  [s3] no bucket/credentials; skipping media upload")
 
-        # Write to Mongo if configured.
+        # Write to Mongo if configured. Store the exact S3 keys so refresh-urls
+        # presigns what was uploaded, regardless of day/segment numbering.
         wrote_mongo = False
         if settings.mongo_uri:
             try:
                 from . import store_mongo
                 store_mongo.upsert_summary(summary, photo=photo_url, video_url=video_url,
+                                           photo_key=p_key, video_key=v_key,
                                            name=clip_name, events=events, welfare=welfare,
                                            settings=settings)
                 wrote_mongo = True
@@ -463,17 +465,25 @@ def cmd_refresh_urls(args: argparse.Namespace) -> int:
         print("[mongo] MONGO_URI not set; cannot update docs")
         return 1
 
-    demo_path = Path(args.config) if args.config else (PIPELINE_ROOT / "data" / "demo_dogs.json")
-    cfg = json.loads(demo_path.read_text())
-    for clip in cfg.get("clips", []):
-        if clip.get("excluded"):
-            continue
-        dog_id = clip["dog_id"]
-        day = int(clip.get("day", 1))
-        photo = s3store.presign_existing(s3store.thumbnail_key(dog_id), settings=settings)
-        video = s3store.presign_existing(s3store.video_key(dog_id, day), settings=settings)
-        store_mongo.set_media_urls(dog_id, photo=photo, video_url=video, settings=settings)
-        print(f"  {dog_id}: photo={'yes' if photo else 'no'} video={'yes' if video else 'no'}")
+    # Refresh every owned dog present in Mongo (not just demo_dogs.json), and presign
+    # the EXACT S3 keys stored on each doc. Keys stored at upload time are the source
+    # of truth, so day/segment numbering in any config can never break a video URL.
+    # Docs predating key storage fall back to the computed key from the doc's own day.
+    col = store_mongo.get_collection(settings)
+    for doc in col.find({}, {"_id": 0, "dog_id": 1, "day": 1,
+                             "photo_key": 1, "video_key": 1}):
+        dog_id = doc.get("dog_id", "")
+        if not store_mongo.is_owned(dog_id):
+            continue  # never touch the teammate's seed dogs
+        day = int(doc.get("day", 1))
+        p_key = doc.get("photo_key") or s3store.thumbnail_key(dog_id)
+        v_key = doc.get("video_key") or s3store.video_key(dog_id, day)
+        photo = s3store.presign_existing(p_key, settings=settings)
+        video = s3store.presign_existing(v_key, settings=settings)
+        store_mongo.set_media_urls(dog_id, photo=photo, video_url=video,
+                                   photo_key=p_key, video_key=v_key, settings=settings)
+        print(f"  {dog_id}: photo={'yes' if photo else 'no'} "
+              f"video={'yes' if video else 'no'} (video_key={v_key})")
     return 0
 
 
