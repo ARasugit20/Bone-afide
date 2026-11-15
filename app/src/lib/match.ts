@@ -1,6 +1,6 @@
 import type { Dog, Family, HandlingLevel, Match } from "./types";
 
-const MIN_EXPERIENCE: Record<HandlingLevel, number> = { Green: 0, Yellow: 1, Orange: 2, Red: 3 };
+export const MIN_EXPERIENCE: Record<HandlingLevel, number> = { Green: 0, Yellow: 1, Orange: 2, Red: 3 };
 const ENERGY_TARGET = { 1: 30, 2: 55, 3: 80 } as const;
 const BLOCKED_COST = 1000;
 const DUMMY_COST = 100;

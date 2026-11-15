@@ -15,5 +15,6 @@ export const POST = safe(async (req: Request) => {
   const notes = await searchMemory(dogTag(dog_id), question);
   const prompt = `Notes:\n${notes || "(no notes found)"}\n\nQuestion: ${question}`;
   const answer = await gemini(SYSTEM, prompt);
-  return NextResponse.json({ answer, notes_found: Boolean(notes) });
+  const sources = notes.split("\n").filter(Boolean);
+  return NextResponse.json({ answer, notes_found: sources.length > 0, sources });
 });

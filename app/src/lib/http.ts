@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const CAPTION = "Decision support, not a diagnosis.";
+export { CAPTION } from "./ui";
 
 export function fail(message: string, status = 500) {
   return NextResponse.json({ error: message }, { status });
