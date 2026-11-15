@@ -114,4 +114,10 @@ def annotate_clip(
         writer.write(frame)
 
     writer.release()
+
+    # OpenCV writes MPEG-4 Part 2 ("mp4v"), which browsers reject. Transcode the
+    # finished file in place to browser-safe H.264 (yuv420p, +faststart) so every
+    # caller (run-all, segments, /analyze) gets a playable video.
+    from .transcode import transcode_in_place
+    transcode_in_place(out_path)
     return out_path

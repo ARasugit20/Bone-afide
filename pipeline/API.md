@@ -219,7 +219,10 @@ and `video_url`.
 ## 6. `GET /videos/{name}`
 
 Serves an annotated MP4 from `data/out/` so the frontend can play the clip with the
-tracking box and live scores. `404` if not found. Supports range requests.
+tracking box and live scores. `404` if not found. Supports range requests. Videos are
+transcoded to browser-safe **H.264 / yuv420p** (`+faststart`), so they play directly
+in Chrome/Safari/Firefox `<video>` tags (the S3 `video_url` on each dog is the same
+H.264 file).
 
 ```bash
 curl http://localhost:8000/videos/luna_annotated.mp4 --output luna.mp4
