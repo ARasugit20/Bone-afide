@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Gate } from "@/components/AuthProvider";
-import { Button, ButtonLink, Card, DogPhoto, Empty, ErrorNote, LevelChip, SectionTitle, Skeleton, Today, UpdatedAt } from "@/components/ui";
+import { Button, ButtonLink, Card, DogPhoto, Empty, ErrorNote, LevelChip, SectionTitle, Skeleton, UpdatedAt } from "@/components/ui";
 import { STAFF_ONLY } from "@/lib/access";
 import { displayName } from "@/lib/dogs";
 import type { Dog, Family, HandlingLevel, Match, MatchRun } from "@/lib/types";
@@ -68,7 +68,6 @@ function Overview() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Shelter overview</h1>
-          <Today className="mt-1 text-sm text-muted" />
         </div>
         <div className="flex flex-wrap gap-2">
           <ButtonLink href="/upload">Upload kennel video</ButtonLink>
