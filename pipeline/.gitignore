@@ -1,0 +1,20 @@
+# Secrets — never commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Model weights (downloaded on demand)
+*.pt
+
+# Pipeline artifacts (generated outputs; sample clips under tests/data stay tracked)
+out/
+*_annotated.mp4
+
+# OS / editor
+.DS_Store

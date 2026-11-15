@@ -1,0 +1,15 @@
+{
+  "_comment": "Rule-based plain-English needs. Each rule's 'when' maps a field to inclusive {min, max} bounds; all conditions must hold for the rule to contribute its 'need' text. Fields: energy, stress, approachability, confidence, arousal_spikes, jumps_per_min. Rules apply in order; duplicate need texts are de-duplicated. Keep text plain; banned words are rejected by guardrails. 'max_needs' caps how many are kept.",
+  "max_needs": 4,
+  "rules": [
+    {"when": {"energy": {"min": 65}}, "need": "active home with daily exercise"},
+    {"when": {"jumps_per_min": {"min": 6}}, "need": "owner comfortable with an excitable dog"},
+    {"when": {"energy": {"max": 30}, "approachability": {"min": 70}}, "need": "great for apartments / first-time owners"},
+    {"when": {"stress": {"min": 40}}, "need": "calm, predictable routine"},
+    {"when": {"stress": {"min": 60}, "approachability": {"max": 40}}, "need": "quiet home, patient owner"},
+    {"when": {"approachability": {"min": 80}}, "need": "enjoys meeting new people"},
+    {"when": {"confidence": {"max": 40}}, "need": "slow, gentle introductions"},
+    {"when": {"arousal_spikes": {"min": 8}}, "need": "structured play to settle excitement"}
+  ],
+  "fallback": ["needs further observation"]
+}

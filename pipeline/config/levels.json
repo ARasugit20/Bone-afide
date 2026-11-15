@@ -1,0 +1,13 @@
+{
+  "_comment": "Handling-level thresholds. Rules evaluated top to bottom; first match wins. Each rule's 'when' maps a score field to {min, max} bounds (inclusive). Output is limited to Green/Yellow/Orange/Red. Tune freely. Fields: energy, stress, approachability, confidence, arousal_spikes.",
+  "rules": [
+    {"level": "Red",    "when": {"stress": {"min": 70}, "arousal_spikes": {"min": 5}, "approachability": {"max": 50}}},
+    {"level": "Red",    "when": {"stress": {"min": 80}}},
+    {"level": "Orange", "when": {"stress": {"min": 40}}},
+    {"level": "Orange", "when": {"arousal_spikes": {"min": 10}}},
+    {"level": "Yellow", "when": {"stress": {"min": 20}}},
+    {"level": "Yellow", "when": {"arousal_spikes": {"min": 8}}},
+    {"level": "Green",  "when": {}}
+  ],
+  "default": "Yellow"
+}
