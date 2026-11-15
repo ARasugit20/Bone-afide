@@ -150,6 +150,7 @@ function DogTile({ dog, roster, priority }: { dog: Dog; roster: Dog[]; priority?
 type Attention = { dog: Dog; reason: string; action: string; rank: number };
 
 function attentionFor(d: Dog): Attention | null {
+  if (d.welfare?.status === "rising_stress") return { dog: d, reason: "Stress rising", action: "Review welfare", rank: -1 };
   if (d.handling_level === "Red" && !d.expert_reviewed) return { dog: d, reason: "Red level, not vet reviewed", action: "Book vet review", rank: 0 };
   if (d.handling_level === "Orange" && !d.expert_reviewed) return { dog: d, reason: "Orange level is provisional", action: "Book vet review", rank: 1 };
   if (d.stress >= 60) return { dog: d, reason: `High stress (${d.stress})`, action: "Plan a calm start", rank: 2 };
@@ -178,7 +179,7 @@ function NeedsAttention({ dogs, loading }: { dogs: Dog[]; loading: boolean }) {
           {shown.map(({ dog, reason, action }) => (
             <li key={dog.dog_id}>
               <Link href={`/dogs/${dog.dog_id}`} className="flex items-center gap-3 px-4 py-3 transition hover:bg-canvas sm:px-6">
-                <DogPhoto dog={dog} className="h-9 w-9" rounded="rounded-lg" />
+                <DogPhoto dog={dog} className="h-9 w-9" rounded="rounded-lg" sizes="36px" eager />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{dog.name}</p>
                   <p className="truncate text-xs text-muted">{reason}</p>

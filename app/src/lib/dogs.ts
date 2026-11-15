@@ -1,5 +1,6 @@
 import type { Db } from "mongodb";
-import type { Dog, HandlingLevel } from "./types";
+import { plain } from "./text";
+import type { BehaviorEvent, Dog, EventType, HandlingLevel, Welfare } from "./types";
 
 const LEVELS: HandlingLevel[] = ["Green", "Yellow", "Orange", "Red"];
 const TRENDS: Dog["trend"][] = ["improving", "stable", "worsening"];
@@ -56,8 +57,43 @@ export function normalizeDog(raw: unknown): Dog | null {
     ...(typeof r.behavior_report === "string" && r.behavior_report.trim() ? { behavior_report: r.behavior_report.trim() } : {}),
     ...(r.behavior_report_at ? { behavior_report_at: String(r.behavior_report_at) } : {}),
     ...(typeof r.behavior_report_provider === "string" ? { behavior_report_provider: r.behavior_report_provider } : {}),
+    ...(Array.isArray(r.events) ? { events: normalizeEvents(r.events) } : {}),
+    ...(normalizeWelfare(r.welfare) ?? {}),
     expert_reviewed: r.expert_reviewed === true,
     ...(updated && !isNaN(updated.getTime()) ? { updated_at: updated.toISOString() } : {}),
+  };
+}
+
+const EVENT_TYPES: EventType[] = ["calm", "jump", "acceleration", "reversal"];
+
+function normalizeEvents(raw: unknown[]): BehaviorEvent[] {
+  return raw
+    .map((e) => e as Record<string, unknown>)
+    .filter((e) => e && EVENT_TYPES.includes(e.type as EventType) && Number.isFinite(Number(e.start_s)))
+    .map((e) => {
+      const start_s = Math.max(0, Number(e.start_s));
+      const end = Number(e.end_s);
+      return {
+        type: e.type as EventType,
+        start_s,
+        end_s: Number.isFinite(end) && end >= start_s ? end : start_s,
+        label: plain(String(e.label ?? "")).trim() || "Behavior event",
+      };
+    })
+    .sort((a, b) => a.start_s - b.start_s);
+}
+
+function normalizeWelfare(raw: unknown): { welfare: Welfare } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const w = raw as Record<string, unknown>;
+  if (w.status !== "rising_stress" && w.status !== "improving" && w.status !== "stable") return null;
+  return {
+    welfare: {
+      status: w.status,
+      sessions: Number(w.sessions) || 0,
+      stress_change: Number(w.stress_change) || 0,
+      message: plain(String(w.message ?? "")),
+    },
   };
 }
 

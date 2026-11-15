@@ -45,7 +45,8 @@ export function PassportView() {
               <LevelChip level={d.handling_level} showLabel />
               <ReviewBadge dog={d} />
             </div>
-            <p className="mt-2 text-sm text-muted">Observed for {d.day} {d.day === 1 ? "day" : "days"} on kennel video. Breed is never recorded.</p>
+            <p className="mt-2 text-sm text-muted">Observed for {d.day} {d.day === 1 ? "day" : "days"} on kennel video.</p>
+            <p className="mt-1 text-xs text-muted">Breed is never recorded. Matches use behavior only.</p>
           </div>
         </div>
         <PassportSummary dogId={d.dog_id} />

@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { TrackingVideo } from "@/components/TrackingVideo";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import {
   Bar, Button, ButtonLink, Caption, Card, DogPhoto, Empty, ErrorNote, LevelChip, NeedChip, PageHeader, ReviewBadge, SectionTitle, Skeleton, Source, UpdatedAt,
@@ -80,25 +81,14 @@ export function DogView() {
         }
       />
       {signError && <div className="mb-4"><ErrorNote message={signError} onRetry={signOff} /></div>}
+      <WelfareNote dog={d} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="space-y-6">
           <Card as="section">
             <SectionTitle title="Tracking video" sub="YOLO11 tracking with camera-shake compensation." />
             {d.video_url ? (
-              <>
-                <video
-                  key={d.video_url}
-                  src={d.video_url}
-                  poster={d.photo}
-                  controls
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className="aspect-video w-full rounded-xl bg-bark object-contain"
-                />
-                <Source className="mt-2">Tracking video stored on Amazon S3</Source>
-              </>
+              <TrackingVideo src={d.video_url} poster={d.photo} events={d.events ?? []} />
             ) : (
               <Empty title="No tracking video yet" body="Upload a kennel video to create one." action={<ButtonLink href="/upload" variant="secondary">Upload kennel video</ButtonLink>} />
             )}
@@ -145,10 +135,32 @@ export function DogView() {
   );
 }
 
+/** Kennel-decline alert computed by the pipeline from the last 3 Tiger sessions. Stable shows nothing. */
+function WelfareNote({ dog }: { dog: Dog }) {
+  const w = dog.welfare;
+  if (!w || w.status === "stable") return null;
+  if (w.status === "rising_stress") {
+    return (
+      <div role="alert" className="mb-6 flex flex-col gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200 sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          <span className="font-semibold">Stress rising.</span> {w.message}
+        </p>
+        <a href="#stress-trend" className="shrink-0 font-semibold underline underline-offset-2">See the chart</a>
+      </div>
+    );
+  }
+  return (
+    <p className="mb-6 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+      Settling in: {w.message}
+    </p>
+  );
+}
+
 function TrendCard({ dogId }: { dogId: string }) {
   const trend = useApi<Trend>(`/api/trend/${dogId}`);
   return (
-    <Card as="section">
+    <Card as="section" className="scroll-mt-24">
+      <span id="stress-trend" className="block scroll-mt-24" />
       <SectionTitle title="Stress and energy over observation sessions" />
       {trend.loading ? (
         <Skeleton className="h-40" />

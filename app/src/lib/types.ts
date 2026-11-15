@@ -19,8 +19,26 @@ export interface Dog {
   behavior_report_at?: string;
   behavior_report_provider?: string; // "bedrock" when written by Amazon Bedrock
   behavior_report_by?: string; // display label, e.g. "Amazon Bedrock (Nova Lite)"
+  events?: BehaviorEvent[]; // detected by the pipeline from the tracking video
+  welfare?: Welfare; // kennel-decline alert from the last 3 Tiger sessions
   expert_reviewed: boolean;
   updated_at?: string; // ISO; set by the pipeline when present
+}
+
+export type EventType = "calm" | "jump" | "acceleration" | "reversal";
+
+export interface BehaviorEvent {
+  type: EventType;
+  start_s: number;
+  end_s: number;
+  label: string;
+}
+
+export interface Welfare {
+  status: "rising_stress" | "improving" | "stable";
+  sessions: number;
+  stress_change: number;
+  message: string;
 }
 
 export interface StaffNote {
