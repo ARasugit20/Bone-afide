@@ -60,12 +60,25 @@ async def _lifespan(_app):
     yield
 
 
-app = FastAPI(title="Unleashed behavior pipeline", version="0.1.0", lifespan=_lifespan)
+app = FastAPI(title="Bone-a-find behavior pipeline", version="0.1.0", lifespan=_lifespan)
+
+# Allowed browser origins for the live app + local dev. Extra origins may be added
+# via CORS_ORIGINS (comma-separated) without a code change.
+_DEFAULT_CORS_ORIGINS = [
+    "https://bone-a-find.us",
+    "https://www.bone-a-find.us",
+    "https://api.bone-a-find.us",
+    "https://main.d3dc3rmi031o40.amplifyapp.com",
+    "http://localhost:3000",
+]
+_extra = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+CORS_ORIGINS = _DEFAULT_CORS_ORIGINS + _extra
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -325,22 +338,24 @@ async def analyze(
     # Tiger write + trend + welfare.
     trend = "stable"
     welfare = None
+    trend_rows = None
     if settings.tiger_dsn:
         try:
-            from . import store_tiger
-            from .welfare import compute_welfare
-            store_tiger.write_readings(dog_id=dog_id, day=day, hour=hour, scores=scores)
-            store_tiger.refresh_daily()
-            trend = store_tiger.compute_trend(dog_id) or "stable"
-            welfare = compute_welfare(store_tiger.get_trend(dog_id))
+            from . import persist
+            trend, trend_rows = persist.write_tiger(dog_id, [(day, scores)], hour, settings)
             stored["tiger"] = True
         except Exception:
             log.exception("Tiger write failed for %s", dog_id)
 
-    summary = build_summary(
-        dog_id=dog_id, day=day, scores=scores,
-        handling_level=level, trend=trend, needs=needs,
-    )
+    # Build the full set of derived fields via the shared persist path, so the legacy
+    # /analyze writes the same doc shape as /analyze-s3 (evidence, fit_notes,
+    # not_suited_for, handler, passport_public, pose default).
+    from . import persist
+    fields = persist.build_doc_fields(
+        dog_id, day, scores, features, events,
+        trend=trend, trend_rows=trend_rows, name=display, settings=settings)
+    summary = fields["summary"]
+    welfare = fields["welfare"]
 
     # Annotated video (local file for immediate playback via /videos).
     annotated_url = None
@@ -369,8 +384,7 @@ async def analyze(
     # Persist to Mongo now (fast path); S3 media follows in the background.
     if settings.mongo_uri:
         try:
-            doc = store_mongo.upsert_summary(
-                summary, name=display, events=events, welfare=welfare, settings=settings)
+            persist.persist_summary(dog_id, fields)
             store_mongo.get_collection(settings).update_one(
                 {"dog_id": dog_id}, {"$set": {"media_status": "pending"}})
             stored["mongo"] = True
@@ -383,8 +397,11 @@ async def analyze(
     else:
         stored["s3"] = "skipped"
 
+    # Response stays backward compatible: original keys plus the new derived fields.
     return {"summary": summary, "name": display, "events": events,
-            "welfare": welfare, "annotated_url": annotated_url, "stored": stored}
+            "welfare": welfare, "annotated_url": annotated_url, "stored": stored,
+            "evidence": fields["evidence"], "fit_notes": fields["fit_notes"],
+            "not_suited_for": fields["not_suited_for"], "handler": fields["handler"]}
 
 
 # --- video playback ------------------------------------------------------------

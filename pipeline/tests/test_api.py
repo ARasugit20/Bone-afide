@@ -124,6 +124,22 @@ def test_events_not_found(client):
     assert client.get("/dogs/ghost-99/events").status_code == 404
 
 
+def test_cors_allows_known_origin(client):
+    r = client.get("/health", headers={"Origin": "https://bone-a-find.us"})
+    assert r.headers.get("access-control-allow-origin") == "https://bone-a-find.us"
+
+
+def test_cors_blocks_random_origin(client):
+    r = client.get("/health", headers={"Origin": "https://evil.example.com"})
+    # Starlette CORS does not echo an allow-origin header for a disallowed origin.
+    assert r.headers.get("access-control-allow-origin") not in ("https://evil.example.com", "*")
+
+
+def test_cors_localhost_allowed(client):
+    r = client.get("/health", headers={"Origin": "http://localhost:3000"})
+    assert r.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+
 def test_trend(client):
     r = client.get("/dogs/luna-01/trend")
     assert r.status_code == 200
@@ -195,6 +211,11 @@ def test_analyze_upload_dog_is_owned_and_stored(client, monkeypatch):
     assert body["name"] == "Buddy"
     assert body["events"]
     assert captured["summary"]["dog_id"] == "upload-test-01"
+    # legacy /analyze now returns the same derived fields as /analyze-s3
+    assert "evidence" in body and "fit_notes" in body
+    assert "not_suited_for" in body and "handler" in body
+    # and persists them (passport_public among the upsert kwargs)
+    assert "passport_public" in captured and "handler" in captured
 
 
 def test_video_not_found(client):
