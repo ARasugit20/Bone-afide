@@ -1,5 +1,11 @@
 import type { Dog, Pose } from "./types";
 
+// SuperAnimal pose has been run across all 9 test clips (1 fully stable, 5 partially
+// stable; head tracking strongest at ~0.65 to 0.78 MODEL CONFIDENCE, not validated
+// accuracy; tail/limb weaker). Until a human-labeled ground-truth comparison is done,
+// pose is supporting/visual evidence only: it never feeds matching, handling level,
+// approachability, needs, or the contract scores. The only effect, when POSE_ENABLED,
+// is a small bounded energy/stress nudge shown as evidence (never a consequential one).
 /** Off unless POSE_ENABLED is explicitly "true" / "1". */
 export const POSE_ENABLED = /^(true|1)$/i.test(process.env.POSE_ENABLED ?? "");
 export const POSE_MIN_READINESS = 70;

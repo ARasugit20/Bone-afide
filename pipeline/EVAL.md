@@ -187,6 +187,14 @@ On the demo set: june, katie, kacy → Green; kinder, luna → Orange.
 - **One dog per clip.** Multi-dog scenes fall back to the most-persistent track.
 - **Determinism ±1.** MPS inference is not bit-exact; a score can vary by 1 point
   between runs.
+- **Pose is not yet validated.** The SuperAnimal pose stack (`pipeline/pose/`) has
+  been run across all 9 test clips: 1 clip fully stable, 5 partially stable. Head
+  tracking is strongest at about 0.65 to 0.78 model confidence on 6 of 9 dogs. That
+  number is the model's own confidence, not a validated accuracy; it has not been
+  checked against human-labeled ground truth. Tail and limb tracking are weaker.
+  Pose is therefore supporting and visual evidence only. It does not influence
+  matching, handling level, approachability, needs, or the contract scores, and it
+  will not until a human-labeled ground-truth comparison is done.
 
 ## Ethical guardrails
 
@@ -199,6 +207,10 @@ On the demo set: june, katie, kacy → Green; kinder, luna → Orange.
 - **Never breed.** Breed is never an input to any feature, score, level, or rule
   (section 5). A `assert_no_breed` guard rejects breed-carrying source records at the
   ingest boundary. The companion `bias_test.py` demonstrates that a generic vision
-  model given a breed label can rate the same dog differently, while this pipeline —
-  which never sees breed — does not.
+  model given a breed label can rate the same dog differently, while this pipeline,
+  which never sees breed, does not.
+- **Pose is gated.** Pose is supporting and visual evidence only until human-labeled
+  validation is complete. It cannot influence matching or any other consequential
+  decision: the matcher never reads the `pose` field, and handling level,
+  approachability, needs, and the contract scores are never derived from pose.
 ```

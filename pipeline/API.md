@@ -401,6 +401,31 @@ The SuperAnimal-Quadruped pose stack lives under `pipeline/pose/` with its OWN v
 and requirements (DeepLabCut 3.0.2, Python 3.10). It is fully isolated: the main
 pipeline venv never imports DeepLabCut, and pose is off by default.
 
+### Status (as of the latest benchmark)
+
+Pose has been run successfully across all 9 test clips. Current benchmark:
+
+- 1 clip is fully stable; 5 clips are partially stable.
+- Head tracking is the strongest signal, with model confidence of about 0.65 to 0.78
+  on 6 of 9 dogs. This is the model's own confidence score, NOT a validated accuracy
+  figure. It has not yet been checked against human-labeled ground truth.
+- Tail and limb tracking are weaker and less stable than head tracking.
+
+Next validation step: compare pose output against human-labeled ground truth before
+pose is allowed to influence any consequential decision.
+
+### Safety gate (pose is visual / supporting evidence only)
+
+Until human-labeled validation is complete, pose is **supporting and visual evidence
+only**. It MUST NOT influence matching or any other consequential decision. Concretely:
+
+- Matching (`app/src/lib/match.ts` and `/api/match`) never reads the `pose` field.
+- Handling level, approachability, needs, and the output contract scores are never
+  derived from pose.
+- Pose is off unless `POSE_ENABLED=true`; even then the app only renders pose as
+  evidence and applies a small, gated energy/stress nudge that never touches the
+  fields above (see `app/src/lib/pose.ts`), and matching still ignores pose entirely.
+
 Every dog doc carries a `pose` field, default `{"available": false}`. When the pose
 run is executed and pushed, the field also includes the contract keys plus richer
 measurements:
@@ -416,9 +441,10 @@ measurements:
 ```
 
 The pipeline never clobbers an existing `pose` object. The app reads `pose` only when
-`POSE_ENABLED=true` and `readiness >= 70` (see `app/src/lib/pose.ts`), and then only
-nudges energy/stress by at most 15 percent; handling level, approachability, and needs
-are never touched by pose.
+`POSE_ENABLED=true` and `readiness >= 70` (see `app/src/lib/pose.ts`), and then only as
+a small, bounded energy/stress nudge (at most 15 percent) shown as evidence. Handling
+level, approachability, needs, the contract scores, and the matcher are never touched
+by pose. This stays true until human-labeled validation is complete.
 
 ### Running pose (separate venv, Python 3.10)
 
