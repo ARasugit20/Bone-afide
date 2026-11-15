@@ -18,8 +18,8 @@ def pose_doc(entry: dict) -> dict:
     val = lambda v: None if isinstance(v, str) else v  # noqa: E731 - "not_measurable" becomes null
     return {
         "posture_pct": val(f["posture_pct"]),
-        "tail_h": val(f["tail_height_mean"]),
-        "head_h": val(f["head_height_mean"]),
+        "tail_h": val(f.get("tail_height_median")),
+        "head_h": val(f.get("head_height_median")),
         "readiness": entry["readiness"],
         "confidence": f["mean_confidence"],
         "version": entry["version"],

@@ -109,12 +109,15 @@ def main() -> None:
             "posture_accuracy": posture_accuracy(clip, pose, vp),
         }
         pcts = [p for p in (pct_of_ideal(metrics[k], criteria[k]) for k in criteria if k in metrics) if p is not None]
-        readiness = round(sum(pcts) / len(pcts)) if pcts else 0
         passes = {
             k: (None if isinstance(metrics[k], str) or metrics[k] is None else
                 (metrics[k] <= criteria[k]["min"] if criteria[k].get("lower_is_better") else metrics[k] >= criteria[k]["min"]))
             for k in criteria if k in metrics
         }
+        readiness = round(sum(pcts) / len(pcts)) if pcts else 0
+        # Any measured criterion under its minimum, including confidence, caps the clip.
+        if any(v is False for v in passes.values()):
+            readiness = min(readiness, 60)
         out[clip] = {"viewpoint": vp, "config": best["tag"], "seconds": best["seconds"],
                      "features": feats, "metrics": metrics, "passes": passes,
                      "readiness": readiness, "version": VERSION}

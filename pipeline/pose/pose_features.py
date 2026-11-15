@@ -59,18 +59,40 @@ def interpolate(frames, names, max_gap=MAX_GAP):
 
 
 def signed_height(pt, a, b):
-    """Signed distance from line a->b; image y grows downward, so the sign is flipped to make up positive."""
+    """Perpendicular distance from the back line. Positive is image-up (−y), whichever way the dog faces."""
     if not pt or not a or not b:
         return None
     dx, dy = b[0] - a[0], b[1] - a[1]
     length = math.hypot(dx, dy)
     if length < 1e-6:
         return None
-    return -(dx * (pt[1] - a[1]) - dy * (pt[0] - a[0])) / length
+    # Two unit normals; keep the one aligned with image-up (0, −1).
+    if dx > 0:
+        nx, ny = dy / length, -dx / length
+    else:
+        nx, ny = -dy / length, dx / length
+    return (pt[0] - a[0]) * nx + (pt[1] - a[1]) * ny
 
 
 def mean(xs):
     return sum(xs) / len(xs) if xs else None
+
+
+def median_iqr(xs):
+    if not xs:
+        return None, None
+    s = sorted(xs)
+
+    def q(p):
+        i = (len(s) - 1) * p
+        lo, hi = math.floor(i), math.ceil(i)
+        return s[lo] if lo == hi else s[lo] * (hi - i) + s[hi] * (i - lo)
+
+    return q(0.5), q(0.75) - q(0.25)
+
+
+def clip_height(v):
+    return max(-1.5, min(1.5, v))
 
 
 def compute(pose: dict, viewpoint: str | None = None) -> dict:
@@ -92,22 +114,33 @@ def compute(pose: dict, viewpoint: str | None = None) -> dict:
     posture_n = 0
     tails, heads, confs, backline_frames = [], [], [], 0
 
+    bodies = []
     for i in range(len(frames)):
         line = next(((get(a, i), get(b, i)) for a, b in pairs if get(a, i) and get(b, i)), None)
         if not line:
             continue
         a, b = line
         body = math.hypot(b[0] - a[0], b[1] - a[1])
-        if body < 1e-6:
+        if body >= 1e-6:
+            bodies.append(body)
+    body_med = median_iqr(bodies)[0] or 0
+
+    for i in range(len(frames)):
+        line = next(((get(a, i), get(b, i)) for a, b in pairs if get(a, i) and get(b, i)), None)
+        if not line:
+            continue
+        a, b = line
+        body = math.hypot(b[0] - a[0], b[1] - a[1])
+        if body < 1e-6 or (body_med and body < 0.3 * body_med):
             continue
         backline_frames += 1
         tip, head = get(tail_tip, i), get(head_name, i)
         th, hh = signed_height(tip, a, b), signed_height(head, a, b)
         if th is not None:
-            tails.append(th / body)
+            tails.append(clip_height(th / body))
             confs.append(min(tip[2], a[2], b[2]))
         if hh is not None:
-            heads.append(hh / body)
+            heads.append(clip_height(hh / body))
             confs.append(min(head[2], a[2], b[2]))
 
         sh, hp = get(shoulder, i), get(hip, i)
@@ -129,10 +162,14 @@ def compute(pose: dict, viewpoint: str | None = None) -> dict:
     total = len(frames) or 1
     # A head-on or rear view cannot support a side-profile height or posture read.
     blocked = viewpoint == "front_or_rear"
+    tail_med, tail_iqr = median_iqr(tails)
+    head_med, head_iqr = median_iqr(heads)
     summary = {
         "posture_pct": NOT_MEASURABLE if blocked or not posture_n else {k: round(100 * v / posture_n, 1) for k, v in counts.items()},
-        "tail_height_mean": NOT_MEASURABLE if blocked or mean(tails) is None else round(mean(tails), 3),
-        "head_height_mean": NOT_MEASURABLE if blocked or mean(heads) is None else round(mean(heads), 3),
+        "tail_height_median": NOT_MEASURABLE if blocked or tail_med is None else round(tail_med, 3),
+        "tail_height_iqr": None if blocked or tail_iqr is None else round(tail_iqr, 3),
+        "head_height_median": NOT_MEASURABLE if blocked or head_med is None else round(head_med, 3),
+        "head_height_iqr": None if blocked or head_iqr is None else round(head_iqr, 3),
         "mean_confidence": None if mean(confs) is None else round(mean(confs), 3),
         "frames_used": backline_frames,
         "frames_total": len(frames),
