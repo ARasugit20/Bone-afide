@@ -15,12 +15,13 @@ Run:
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -31,6 +32,8 @@ from .needs import derive_needs
 from .schemas import build_summary
 from .scores import compute_scores  # noqa: F401 (kept for parity/testing)
 from .settings import PIPELINE_ROOT, load_settings
+
+log = logging.getLogger("behavior.api")
 
 # The five real demo dogs. /dogs returns only these unless ?all=true.
 REAL_DOG_IDS = ["june-01", "katie-01", "kacy-01", "kinder-01", "luna-01"]
@@ -166,15 +169,54 @@ def dog_trend(dog_id: str) -> dict:
 
 # --- analyze (upload) ----------------------------------------------------------
 
+def _upload_media_bg(dog_id: str, day: int, thumb_path: Optional[str],
+                     annotated_path: Optional[str]):
+    """Background: upload thumbnail + video to S3, presign, and mark the doc complete.
+
+    Runs after the response is sent. Updates the doc's photo/video_url and sets
+    media_status='complete'. Owned dogs only (enforced by store_mongo helpers).
+    """
+    settings = load_settings()
+    from . import s3store
+    photo = video = None
+    try:
+        if s3store.available(settings):
+            if thumb_path:
+                photo = s3store.upload_and_presign(
+                    thumb_path, s3store.thumbnail_key(dog_id),
+                    content_type="image/jpeg", settings=settings)
+            if annotated_path:
+                video = s3store.upload_and_presign(
+                    annotated_path, s3store.video_key(dog_id, day),
+                    content_type="video/mp4", settings=settings)
+        else:
+            log.warning("S3 unavailable; skipping media upload for %s", dog_id)
+    except Exception:
+        log.exception("S3 upload failed for %s", dog_id)
+    try:
+        col = store_mongo.get_collection(settings)
+        set_fields = {"media_status": "complete", "updated_at": store_mongo._now_iso()}
+        if photo:
+            set_fields["photo"] = photo
+        if video:
+            set_fields["video_url"] = video
+        col.update_one({"dog_id": dog_id}, {"$set": set_fields})
+    except Exception:
+        log.exception("Mongo media-status update failed for %s", dog_id)
+
+
 @app.post("/analyze", dependencies=[Depends(auth_dependency)])
 async def analyze(
+    background: BackgroundTasks,
     video: UploadFile,
     dog_id: str = Form(...),
     day: int = Form(...),
     hour: int = Form(...),
     speed_factor: float = Form(1.0),
+    name: str = Form(None),
 ) -> dict:
     from .cli import analyze_one  # local import to avoid a heavy import at startup
+    from .events import extract_events
 
     settings = load_settings()
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -192,46 +234,74 @@ async def analyze(
     features = r["features"]
     level = assign_level(scores, config_dir=settings.config_dir)
     needs = derive_needs(scores, features, config_dir=settings.config_dir)
+    events = extract_events(r["tracks"])
+    display = (name or "").strip() or store_mongo.display_name(dog_id)
 
-    # Tiger write + trend if configured.
+    stored = {"mongo": False, "tiger": False, "s3": "pending"}
+
+    # Tiger write + trend + welfare.
     trend = "stable"
+    welfare = None
     if settings.tiger_dsn:
         try:
             from . import store_tiger
+            from .welfare import compute_welfare
             store_tiger.write_readings(dog_id=dog_id, day=day, hour=hour, scores=scores)
             store_tiger.refresh_daily()
             trend = store_tiger.compute_trend(dog_id) or "stable"
+            welfare = compute_welfare(store_tiger.get_trend(dog_id))
+            stored["tiger"] = True
         except Exception:
-            trend = "stable"
+            log.exception("Tiger write failed for %s", dog_id)
 
     summary = build_summary(
         dog_id=dog_id, day=day, scores=scores,
         handling_level=level, trend=trend, needs=needs,
     )
 
-    # Annotated video.
+    # Annotated video (local file for immediate playback via /videos).
     annotated_url = None
+    annotated_path = None
     try:
         from .annotate import annotate_clip
-        stem = dest.stem
-        out_name = f"{stem}_annotated.mp4"
+        out_name = f"{dest.stem}_annotated.mp4"
+        annotated_path = str(OUT_DIR / out_name)
         annotate_clip(
             str(dest), r["tracks"], scores, handling_level=level,
-            out_path=str(OUT_DIR / out_name),
-            speed_factor=speed_factor, settings=settings,
+            out_path=annotated_path, speed_factor=speed_factor, settings=settings,
         )
         annotated_url = f"/videos/{out_name}"
     except Exception:
-        annotated_url = None
+        log.exception("Annotation failed for %s", dog_id)
+        annotated_path = None
 
-    # Persist to Mongo.
+    # Thumbnail (local; uploaded to S3 in the background).
+    thumb_path = None
+    try:
+        from .thumbnail import save_thumbnail
+        thumb_path = save_thumbnail(r["frames"], r["tracks"], str(OUT_DIR / f"{dog_id}.jpg"))
+    except Exception:
+        log.exception("Thumbnail failed for %s", dog_id)
+
+    # Persist to Mongo now (fast path); S3 media follows in the background.
     if settings.mongo_uri:
         try:
-            store_mongo.upsert_summary(summary, settings=settings)
+            doc = store_mongo.upsert_summary(
+                summary, name=display, events=events, welfare=welfare, settings=settings)
+            store_mongo.get_collection(settings).update_one(
+                {"dog_id": dog_id}, {"$set": {"media_status": "pending"}})
+            stored["mongo"] = True
         except Exception:
-            pass
+            log.exception("Mongo write failed for %s", dog_id)
 
-    return {"summary": summary, "annotated_url": annotated_url}
+    # Schedule S3 upload AFTER responding, then mark the doc complete.
+    if stored["mongo"]:
+        background.add_task(_upload_media_bg, dog_id, day, thumb_path, annotated_path)
+    else:
+        stored["s3"] = "skipped"
+
+    return {"summary": summary, "name": display, "events": events,
+            "welfare": welfare, "annotated_url": annotated_url, "stored": stored}
 
 
 # --- video playback ------------------------------------------------------------

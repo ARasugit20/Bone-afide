@@ -28,7 +28,9 @@ REAL_DOG_IDS = ("june-01", "katie-01", "kacy-01", "kinder-01", "luna-01")
 
 
 def is_owned(dog_id: str) -> bool:
-    return dog_id in REAL_DOG_IDS
+    """Owned dogs this pipeline may write: the 5 demo dogs plus any 'upload-' dog
+    created through POST /analyze. Everything else is the teammate's seed data."""
+    return dog_id in REAL_DOG_IDS or dog_id.startswith("upload-")
 
 
 def display_name(dog_id: str) -> str:

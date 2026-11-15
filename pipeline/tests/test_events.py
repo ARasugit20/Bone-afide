@@ -48,6 +48,35 @@ def test_calm_label_is_from_allowed_set():
             assert e["label"] in allowed
 
 
+def test_calm_never_overlaps_active_events():
+    from behavior.events import split_calm_around_active, CALM_MIN_S
+    # One long calm window with a jump in the middle and an accel near the start.
+    evs = [
+        {"type": "calm", "start_s": 0.0, "end_s": 20.0, "label": "Calm and settled"},
+        {"type": "jump", "start_s": 9.0, "end_s": 9.4, "label": "Jumped up at the fence"},
+        {"type": "acceleration", "start_s": 1.0, "end_s": 1.3, "label": "Rushed toward the front"},
+    ]
+    out = split_calm_around_active(evs)
+    calm = [e for e in out if e["type"] == "calm"]
+    active = [(e["start_s"], e["end_s"]) for e in out if e["type"] != "calm"]
+    # No calm piece may overlap any active interval (with 0.5s padding).
+    for c in calm:
+        for a_s, a_e in active:
+            assert c["end_s"] <= a_s - 0.5 + 1e-9 or c["start_s"] >= a_e + 0.5 - 1e-9
+        assert (c["end_s"] - c["start_s"]) >= CALM_MIN_S
+
+
+def test_calm_dropped_when_remaining_piece_too_short():
+    from behavior.events import split_calm_around_active
+    # A 6s calm window with an accel at 3s leaves two ~2.5s pieces -> both dropped.
+    evs = [
+        {"type": "calm", "start_s": 0.0, "end_s": 6.0, "label": "Calm and settled"},
+        {"type": "acceleration", "start_s": 3.0, "end_s": 3.0, "label": "Rushed toward the front"},
+    ]
+    out = split_calm_around_active(evs)
+    assert [e for e in out if e["type"] == "calm"] == []
+
+
 def test_jump_event_detected_and_labeled():
     tracks = []
     for i in range(120):

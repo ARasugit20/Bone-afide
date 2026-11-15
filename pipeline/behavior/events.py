@@ -153,6 +153,7 @@ def extract_events(tracks: list[FrameTrack]) -> list[dict]:
         else:
             i += 1
 
+    events = split_calm_around_active(events)
     events = merge_and_cap(events)
     # Guardrail: every label must be clean.
     for ev in events:
@@ -160,8 +161,47 @@ def extract_events(tracks: list[FrameTrack]) -> list[dict]:
     return events
 
 
-MERGE_GAP_S = 1.0   # same-type events closer than this are merged into one
-MAX_EVENTS = 12     # keep at most this many (the longest), sorted by start
+MERGE_GAP_S = 1.0        # same-type events closer than this are merged into one
+MAX_EVENTS = 12          # keep at most this many (the longest), sorted by start
+CALM_PAD_S = 0.5         # padding carved out around an active event
+ACTIVE_TYPES = ("jump", "reversal", "acceleration")
+
+
+def split_calm_around_active(events: list[dict]) -> list[dict]:
+    """Ensure calm windows never overlap an active event.
+
+    For each calm window, subtract every active (jump/reversal/acceleration)
+    interval expanded by CALM_PAD_S on each side. Any remaining calm sub-piece
+    shorter than CALM_MIN_S is dropped. Active events are returned unchanged.
+    """
+    active = [e for e in events if e["type"] in ACTIVE_TYPES]
+    calm = [e for e in events if e["type"] == "calm"]
+    if not calm:
+        return events
+    # Padded active intervals to carve out.
+    blocks = sorted(((a["start_s"] - CALM_PAD_S, a["end_s"] + CALM_PAD_S) for a in active),
+                    key=lambda b: b[0])
+
+    kept_calm: list[dict] = []
+    for c in calm:
+        # Start with the full calm span, then subtract each overlapping block.
+        pieces = [(c["start_s"], c["end_s"])]
+        for bs, be in blocks:
+            out = []
+            for ps, pe in pieces:
+                if be <= ps or bs >= pe:
+                    out.append((ps, pe))            # no overlap
+                    continue
+                if bs > ps:
+                    out.append((ps, bs))            # left remainder
+                if be < pe:
+                    out.append((be, pe))            # right remainder
+            pieces = out
+        for ps, pe in pieces:
+            if pe - ps >= CALM_MIN_S:
+                kept_calm.append({**c, "start_s": _round(ps), "end_s": _round(pe)})
+
+    return active + kept_calm
 
 
 def merge_and_cap(events: list[dict]) -> list[dict]:

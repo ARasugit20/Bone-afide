@@ -152,6 +152,50 @@ def test_vet_review_sets_status_reviewed(client):
     assert prof["level_status"] == "reviewed"
 
 
+def test_analyze_upload_dog_is_owned_and_stored(client, monkeypatch):
+    # Mock the heavy pipeline pieces so the route logic is what's tested.
+    from behavior import cli, annotate, thumbnail, events as events_mod, welfare as welfare_mod
+    from behavior.schemas import Scores
+
+    fake_r = {
+        "scores": Scores(energy=40, stress=20, approachability=80, confidence=70, arousal_spikes=1),
+        "features": __import__("behavior.schemas", fromlist=["ClipFeatures"]).ClipFeatures(),
+        "frames": [], "tracks": [], "info": None,
+    }
+    monkeypatch.setattr(cli, "analyze_one", lambda *a, **k: fake_r)
+    monkeypatch.setattr(events_mod, "extract_events",
+                        lambda tracks: [{"type": "calm", "start_s": 0.0, "end_s": 6.0,
+                                         "label": "Calm and settled"}])
+    monkeypatch.setattr(annotate, "annotate_clip", lambda *a, **k: k.get("out_path", "x.mp4"))
+    monkeypatch.setattr(thumbnail, "save_thumbnail", lambda *a, **k: None)
+    # upsert records to the fake collection via the existing store_mongo mock.
+    captured = {}
+    orig_upsert = store_mongo.upsert_summary
+    def cap_upsert(summary, **kw):
+        captured.update(kw)
+        captured["summary"] = summary
+        return {"dog_id": summary["dog_id"], **summary}
+    monkeypatch.setattr(store_mongo, "upsert_summary", cap_upsert)
+    monkeypatch.setattr(store_mongo, "get_collection", lambda settings=None: type(
+        "C", (), {"update_one": lambda self, *a, **k: None})())
+    import behavior.store_tiger as tiger
+    monkeypatch.setattr(tiger, "write_readings", lambda **k: None)
+    monkeypatch.setattr(tiger, "refresh_daily", lambda *a, **k: None)
+    monkeypatch.setattr(tiger, "compute_trend", lambda d, conn=None: "stable")
+    monkeypatch.setattr(tiger, "get_trend", lambda d, conn=None: [])
+
+    files = {"video": ("clip.mp4", io.BytesIO(b"fakevideo"), "video/mp4")}
+    data = {"dog_id": "upload-test-01", "day": "1", "hour": "9", "name": "Buddy"}
+    r = client.post("/analyze", files=files, data=data)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert set(body["stored"]) == {"mongo", "tiger", "s3"}
+    assert body["stored"]["mongo"] is True
+    assert body["name"] == "Buddy"
+    assert body["events"]
+    assert captured["summary"]["dog_id"] == "upload-test-01"
+
+
 def test_video_not_found(client):
     assert client.get("/videos/nope.mp4").status_code == 404
 

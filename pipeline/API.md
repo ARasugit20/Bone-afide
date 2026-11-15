@@ -174,31 +174,47 @@ Real response for luna-01 (Lola):
 
 ## 5. `POST /analyze`
 
-Multipart upload: analyze one clip end-to-end (scores, level, needs, Mongo + Tiger
-write, annotated video). Returns the contract summary and the URL of the annotated
-MP4. `400` if analysis fails.
+Multipart upload: analyze one clip end-to-end — scores, level, needs, events,
+welfare, Tiger reading, Mongo summary, and annotated video. Returns quickly; the S3
+upload of the thumbnail and video runs **after** the response, then the dog doc's
+`media_status` flips from `pending` to `complete` (and `photo`/`video_url` are set).
+`400` if analysis fails.
 
-Form fields: `video` (file, required), `dog_id` (required), `day` (int, required),
-`hour` (int, required), `speed_factor` (float, optional, default 1.0; use 4 for
-slow-motion clips).
+An uploaded dog must use a `dog_id` starting with **`upload-`** (e.g. `upload-rex-01`);
+these are owned and fully persisted. The response includes a `stored` block showing
+what was written: `mongo` (bool), `tiger` (bool), `s3` (`"pending"` while the
+background upload runs, `"skipped"` if Mongo failed).
+
+Form fields: `video` (file, required), `dog_id` (required, `upload-…`), `day` (int,
+required), `hour` (int, required), `speed_factor` (float, optional, default 1.0; use
+4 for slow-motion), `name` (string, optional; defaults to the capitalized dog_id stem).
 
 ```bash
 curl -X POST http://localhost:8000/analyze \
   -F "video=@kennel_clip.mp4" \
-  -F "dog_id=rex-01" -F "day=1" -F "hour=9" -F "speed_factor=1.0"
+  -F "dog_id=upload-rex-01" -F "day=1" -F "hour=9" -F "speed_factor=1.0" -F "name=Rex"
 ```
 
 ```json
 {
   "summary": {
-    "dog_id": "rex-01", "day": 1, "energy": 42, "stress": 20,
+    "dog_id": "upload-rex-01", "day": 1, "energy": 42, "stress": 20,
     "approachability": 80, "confidence": 70, "arousal_spikes": 1,
     "handling_level": "Green", "trend": "stable",
     "needs": ["enjoys meeting new people"]
   },
-  "annotated_url": "/videos/rex-01_day1_1794718602_kennel_clip_annotated.mp4"
+  "name": "Rex",
+  "events": [
+    {"type": "calm", "start_s": 2.1, "end_s": 8.7, "label": "Calm and settled"}
+  ],
+  "welfare": {"status": "stable", "sessions": 1, "stress_change": 0, "message": "Not enough sessions yet"},
+  "annotated_url": "/videos/upload-rex-01_day1_1794731038_kennel_clip_annotated.mp4",
+  "stored": {"mongo": true, "tiger": true, "s3": "pending"}
 }
 ```
+
+Poll `GET /dogs/{dog_id}` until `media_status` is `complete` to get the S3 `photo`
+and `video_url`.
 
 ## 6. `GET /videos/{name}`
 
