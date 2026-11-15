@@ -4,115 +4,104 @@ import { db } from "@/lib/db";
 import { fail, safe } from "@/lib/http";
 import { PIPELINE_URL, pipelineFetch } from "@/lib/pipeline";
 import { getObjectBytes, s3Config } from "@/lib/s3";
-import type { UploadJob } from "@/lib/types";
+import type { JobStage, PipelineJob } from "@/lib/types";
 
 const DOG_ID = /^[a-z0-9][a-z0-9-]{1,40}$/;
 const WAITING = "Video saved. Analysis runs when the pipeline server is connected.";
+const PROGRESS: Record<JobStage, number> = { queued: 2, downloading: 10, detecting: 30, tracking: 55, scoring: 70, saving: 85, uploading_media: 95, done: 100, failed: 100 };
 
-async function update(uploadId: string, patch: Partial<UploadJob>) {
-  await (await db()).collection<UploadJob>("uploads").updateOne({ upload_id: uploadId }, { $set: { ...patch, updated_at: new Date().toISOString() } });
-}
+const jobs = async () => (await db()).collection<PipelineJob>("pipeline_jobs");
 
 /**
- * The pipeline saves its own dogs (the five real dogs and upload-* ids). For a dog it refuses (e.g. a seed dog),
- * save the scores it returned so the dog still updates.
+ * Fallback for a pipeline without /analyze-s3: fetch the video from S3, send it to the classic /analyze, and record
+ * progress in `pipeline_jobs` in the same shape the pipeline uses, so the page reads one format either way.
  */
-async function saveIfPipelineDidNot(job: UploadJob, data: Record<string, unknown>) {
-  const summary = data.summary as Record<string, unknown> | null;
-  const stored = data.stored as { mongo?: boolean } | undefined;
-  if (!summary || typeof summary.handling_level !== "string" || stored?.mongo) return;
-  const fields = ["day", "energy", "stress", "approachability", "confidence", "arousal_spikes", "handling_level", "trend", "needs"] as const;
-  const set: Record<string, unknown> = Object.fromEntries(fields.filter((k) => summary[k] !== undefined).map((k) => [k, summary[k]]));
-  set.updated_at = new Date().toISOString();
-  set.source = "app-upload";
-  if (Array.isArray(data.events)) set.events = data.events;
-  if (data.welfare) set.welfare = data.welfare;
-  await (await db()).collection("dogs").updateOne(
-    { dog_id: job.dog_id },
-    { $set: set, $setOnInsert: { dog_id: job.dog_id, name: job.name || job.dog_id.split("-")[0].replace(/^./, (c) => c.toUpperCase()), expert_reviewed: false } },
-    { upsert: true },
-  );
-}
-
-/** Used until the pipeline has /analyze-s3: fetch the video from S3 and send it to the classic /analyze. */
-async function analyzeViaClassicEndpoint(job: UploadJob) {
+async function runClassic(jobId: string, dogId: string, key: string, contentType: string, day: number, hour: number, name?: string) {
+  const col = await jobs();
+  const timings: Partial<Record<JobStage, number>> = {};
+  let stage: JobStage = "queued";
+  let t = Date.now();
+  const enter = async (next: JobStage) => {
+    timings[stage] = Math.round((Date.now() - t) / 100) / 10;
+    stage = next;
+    t = Date.now();
+    await col.updateOne({ job_id: jobId }, { $set: { stage: next, progress: PROGRESS[next], stage_timings: timings, updated_at: new Date().toISOString() } });
+  };
   try {
-    await update(job.upload_id, { status: "processing", message: "Tracking and scoring" });
-    const bytes = await getObjectBytes(job.key);
+    await enter("downloading");
+    const bytes = await getObjectBytes(key);
+    await enter("tracking"); // the classic endpoint detects, tracks and scores in one call
     const form = new FormData();
-    form.set("video", new Blob([Buffer.from(bytes)], { type: job.content_type }), job.key.split("/").pop());
-    form.set("dog_id", job.dog_id);
-    form.set("day", String(job.day));
-    form.set("hour", String(job.hour));
-    if (job.name) form.set("name", job.name);
+    form.set("video", new Blob([Buffer.from(bytes)], { type: contentType }), key.split("/").pop());
+    form.set("dog_id", dogId);
+    form.set("day", String(day));
+    form.set("hour", String(hour));
+    if (name) form.set("name", name);
     const res = await pipelineFetch("/analyze", { method: "POST", body: form, timeoutMs: 15 * 60_000 });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) throw new Error(String(data.detail ?? `Analysis failed (${res.status})`));
-    await saveIfPipelineDidNot(job, data);
-    await update(job.upload_id, { status: "done", summary: data.summary as UploadJob["summary"], message: undefined });
+    await enter("saving");
+    const s = data.summary as Record<string, number | string>;
+    timings[stage] = Math.round((Date.now() - t) / 100) / 10;
+    await col.updateOne({ job_id: jobId }, { $set: {
+      stage: "done", progress: 100, stage_timings: timings, updated_at: new Date().toISOString(),
+      result: {
+        dog_id: dogId,
+        name: String(data.name ?? name ?? ""),
+        handling_level: s.handling_level as NonNullable<PipelineJob["result"]>["handling_level"],
+        scores: { energy: +s.energy, stress: +s.stress, approachability: +s.approachability, confidence: +s.confidence, arousal_spikes: +s.arousal_spikes },
+        events_count: Array.isArray(data.events) ? data.events.length : 0,
+        media_status: "pending",
+      },
+    } });
   } catch (err) {
-    await update(job.upload_id, { status: "failed", error: (err as Error).message });
+    await col.updateOne({ job_id: jobId }, { $set: { stage: "failed", progress: 100, error: (err as Error).message, updated_at: new Date().toISOString() } });
   }
 }
 
-// Step 2 of an upload: the browser has PUT the video to S3. Record it and hand it to the pipeline.
-// Returns right away; the page polls GET /api/upload/{upload_id}, which reads Mongo.
+// Step 2 of an upload: the browser has PUT the video to S3. Hand the S3 key to the pipeline and return a job id.
+// The page then polls GET /api/upload/{job_id}, which reads `pipeline_jobs` in Mongo (works on Amplify too).
 export const POST = safe(async (req: Request) => {
-  const cfg = s3Config();
-  if (!cfg) return fail("Uploads aren't configured on this server.", 503);
+  if (!s3Config()) return fail("Uploads aren't configured on this server.", 503);
   const body = await req.json();
   const dogId = String(body.dog_id ?? "").trim().toLowerCase();
   const key = String(body.key ?? "");
   const day = Number(body.day ?? 1);
   const name = String(body.name ?? "").trim().slice(0, 40) || undefined;
+  const contentType = String(body.content_type ?? "video/mp4");
+  const hour = new Date().getHours();
   if (!DOG_ID.test(dogId)) return fail("Invalid dog ID.", 400);
   if (!key.startsWith(`uploads/raw/${dogId}-`)) return fail("That upload key doesn't match this dog.", 400);
   if (!Number.isInteger(day) || day < 1 || day > 365) return fail("Day must be a whole number from 1 to 365.", 400);
 
-  const now = new Date().toISOString();
-  const job: UploadJob = {
-    upload_id: randomUUID(),
-    dog_id: dogId,
-    name,
-    day,
-    hour: new Date().getHours(),
-    bucket: cfg.bucket,
-    key,
-    content_type: String(body.content_type ?? "video/mp4"),
-    size: Number(body.size ?? 0),
-    status: "uploaded",
-    created_at: now,
-    updated_at: now,
+  const waiting = async () => {
+    // Keep a record so the video can be analyzed once a pipeline is connected.
+    await (await db()).collection("pending_uploads").insertOne({ dog_id: dogId, s3_key: key, name, day, hour, created_at: new Date().toISOString() });
+    return NextResponse.json({ status: "waiting", message: WAITING });
   };
-  const uploads = (await db()).collection<UploadJob>("uploads");
-  await uploads.insertOne({ ...job });
+  if (!PIPELINE_URL) return waiting();
 
-  if (!PIPELINE_URL) {
-    await update(job.upload_id, { status: "waiting_for_pipeline", message: WAITING });
-    return NextResponse.json({ ...job, status: "waiting_for_pipeline", message: WAITING });
-  }
-
-  // Preferred: the pipeline reads the video from S3 itself and updates this upload record as it works.
   let res: Response | null = null;
   try {
     res = await pipelineFetch("/analyze-s3", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ upload_id: job.upload_id, bucket: job.bucket, key, dog_id: dogId, day, hour: job.hour, name }),
+      body: JSON.stringify({ s3_key: key, dog_id: dogId, name, day, hour }),
       timeoutMs: 10_000,
     });
   } catch {
     res = null;
   }
-  if (res && (res.status === 202 || res.ok)) {
-    await update(job.upload_id, { status: "queued" });
-    return NextResponse.json({ ...job, status: "queued" });
+  if (res?.ok) {
+    const { job_id } = (await res.json()) as { job_id?: string };
+    if (job_id) return NextResponse.json({ status: "started", job_id });
   }
   if (res && (res.status === 404 || res.status === 405)) {
-    // Pipeline is reachable but predates /analyze-s3: run the classic path after responding.
-    after(() => analyzeViaClassicEndpoint(job));
-    return NextResponse.json({ ...job, status: "processing" });
+    const job_id = randomUUID().replace(/-/g, "");
+    const now = new Date().toISOString();
+    await (await jobs()).insertOne({ job_id, dog_id: dogId, s3_key: key, stage: "queued", progress: PROGRESS.queued, stage_timings: {}, error: null, result: null, created_at: now, updated_at: now });
+    after(() => runClassic(job_id, dogId, key, contentType, day, hour, name));
+    return NextResponse.json({ status: "started", job_id });
   }
-  await update(job.upload_id, { status: "waiting_for_pipeline", message: WAITING });
-  return NextResponse.json({ ...job, status: "waiting_for_pipeline", message: WAITING });
+  return waiting();
 });

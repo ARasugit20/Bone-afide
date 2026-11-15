@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { PassportQr } from "@/components/PassportQr";
 import { Bar, Button, Caption, Card, DogPhoto, Empty, ErrorNote, LevelChip, NeedChip, ReviewBadge, SectionTitle, Skeleton, Source } from "@/components/ui";
 import { formatDateTime } from "@/lib/text";
 import type { Dog, Rental, RentalJob } from "@/lib/types";
@@ -76,6 +77,10 @@ export function PassportView() {
       </div>
 
       <Rentals dog={d} name={name} />
+
+      <Card as="section" className="print:break-inside-avoid print:shadow-none">
+        <PassportQr dogId={d.dog_id} name={name} />
+      </Card>
     </article>
   );
 }

@@ -1,6 +1,6 @@
 import type { Db } from "mongodb";
 import { plain } from "./text";
-import type { BehaviorEvent, Dog, EventType, HandlingLevel, Welfare } from "./types";
+import type { BehaviorEvent, Dog, EventType, Evidence, Experience, Handler, HandlingLevel, Welfare } from "./types";
 
 const LEVELS: HandlingLevel[] = ["Green", "Yellow", "Orange", "Red"];
 const TRENDS: Dog["trend"][] = ["improving", "stable", "worsening"];
@@ -60,8 +60,34 @@ export function normalizeDog(raw: unknown): Dog | null {
     ...(typeof r.behavior_report_provider === "string" ? { behavior_report_provider: r.behavior_report_provider } : {}),
     ...(Array.isArray(r.events) ? { events: normalizeEvents(r.events) } : {}),
     ...(normalizeWelfare(r.welfare) ?? {}),
+    ...(r.evidence && typeof r.evidence === "object" ? { evidence: r.evidence as Evidence } : {}),
+    ...(Array.isArray(r.fit_notes) ? { fit_notes: strings(r.fit_notes) } : {}),
+    ...(Array.isArray(r.not_suited_for) ? { not_suited_for: strings(r.not_suited_for) } : {}),
+    handler: normalizeHandler(r.handler, handling_level),
     expert_reviewed: r.expert_reviewed === true,
     ...(updated && !isNaN(updated.getTime()) ? { updated_at: updated.toISOString() } : {}),
+  };
+}
+
+const strings = (v: unknown[]) => v.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => plain(x.trim()));
+
+export const EXPERIENCE_RANK: Record<Experience, number> = { any: 0, some: 1, experienced: 2, staff: 3 };
+
+// Same defaults as the pipeline's config/levels.json handler_map, for dogs it hasn't analyzed (e.g. seed dogs).
+export const HANDLER_BY_LEVEL: Record<HandlingLevel, Omit<Handler, "notes">> = {
+  Green: { min_experience: "any", label: "Any trained volunteer" },
+  Yellow: { min_experience: "some", label: "Volunteers with 3+ months" },
+  Orange: { min_experience: "experienced", label: "Experienced handlers only" },
+  Red: { min_experience: "staff", label: "Behavior staff only" },
+};
+
+function normalizeHandler(raw: unknown, level: HandlingLevel): Handler {
+  const h = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const min = typeof h.min_experience === "string" && h.min_experience in EXPERIENCE_RANK ? (h.min_experience as Experience) : HANDLER_BY_LEVEL[level].min_experience;
+  return {
+    min_experience: min,
+    label: typeof h.label === "string" && h.label.trim() ? plain(h.label) : HANDLER_BY_LEVEL[level].label,
+    notes: Array.isArray(h.notes) ? strings(h.notes) : [],
   };
 }
 

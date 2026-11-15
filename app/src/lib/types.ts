@@ -22,6 +22,10 @@ export interface Dog {
   behavior_report_by?: string; // display label, e.g. "Amazon Bedrock (Nova Lite)"
   events?: BehaviorEvent[]; // detected by the pipeline from the tracking video
   welfare?: Welfare; // kennel-decline alert from the last 3 Tiger sessions
+  evidence?: Evidence; // grounded facts from video and Tiger sessions
+  fit_notes?: string[]; // short factual lines, e.g. "Calm in 2 of 4 sessions."
+  not_suited_for?: string[]; // e.g. "homes with very young children"
+  handler?: Handler; // who can handle this dog day to day
   expert_reviewed: boolean;
   updated_at?: string; // ISO; set by the pipeline when present
 }
@@ -33,6 +37,74 @@ export interface BehaviorEvent {
   start_s: number;
   end_s: number;
   label: string;
+}
+
+export type Experience = "any" | "some" | "experienced" | "staff";
+
+export interface Evidence {
+  sessions_observed: number;
+  calm_sessions: number;
+  max_stress: number;
+  latest_stress: number;
+  jump_count: number;
+  rush_count: number;
+  calm_seconds: number;
+  clip_seconds: number;
+  pct_time_calm: number;
+  trend: string;
+}
+
+export interface Handler {
+  min_experience: Experience;
+  label: string;
+  notes: string[];
+}
+
+export interface Volunteer {
+  volunteer_id: string;
+  name: string;
+  experience: Experience;
+  shifts: string[];
+}
+
+/** Adopter- and landlord-safe view of a dog, for the public QR passport. */
+export interface PublicPassport {
+  dog_id: string;
+  name: string;
+  photo?: string;
+  video_url?: string;
+  handling_level: HandlingLevel;
+  scores: Partial<Record<"energy" | "stress" | "approachability" | "confidence" | "arousal_spikes", number>>;
+  needs: string[];
+  fit_notes: string[];
+  not_suited_for: string[];
+  events: BehaviorEvent[];
+  sessions_observed: number;
+  updated_at?: string;
+  expert_reviewed: boolean;
+}
+
+/** Progress of one /analyze-s3 run, in Mongo `pipeline_jobs` (written by the pipeline). */
+export type JobStage = "queued" | "downloading" | "detecting" | "tracking" | "scoring" | "saving" | "uploading_media" | "done" | "failed";
+
+export interface PipelineJob {
+  job_id: string;
+  dog_id: string;
+  s3_key?: string;
+  stage: JobStage;
+  progress: number;
+  stage_timings?: Partial<Record<JobStage, number>>;
+  error?: string | null;
+  result?: {
+    dog_id: string;
+    name?: string;
+    handling_level: HandlingLevel;
+    scores: { energy: number; stress: number; approachability: number; confidence: number; arousal_spikes: number };
+    events_count?: number;
+    media_status?: string;
+  } | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Welfare {
@@ -76,36 +148,6 @@ export interface Rental {
   url: string;
   source?: string;
   fetched_at?: string;
-}
-
-/**
- * One kennel-video upload, stored in Mongo `uploads`. The browser PUTs the file straight to S3; the pipeline's
- * /analyze-s3 reads it from there and updates this record (status, summary) as it works.
- */
-export interface UploadJob {
-  upload_id: string;
-  dog_id: string;
-  name?: string;
-  day: number;
-  hour: number;
-  bucket: string;
-  key: string;
-  content_type: string;
-  size: number;
-  status: "uploaded" | "waiting_for_pipeline" | "queued" | "processing" | "done" | "failed";
-  message?: string;
-  error?: string;
-  summary?: {
-    dog_id: string;
-    handling_level: HandlingLevel;
-    energy: number;
-    stress: number;
-    approachability: number;
-    confidence: number;
-    arousal_spikes: number;
-  } & Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface RentalJob {

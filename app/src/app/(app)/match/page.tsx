@@ -5,14 +5,16 @@ import { useState } from "react";
 import { Gate, useAuth } from "@/components/AuthProvider";
 import { ExperienceFit } from "@/components/ExperienceFit";
 import { FamilyCard } from "@/components/FamilyCard";
+import { WhyLines } from "@/components/WhyLines";
 import { Button, ButtonLink, Caption, Card, DogPhoto, Empty, ErrorNote, LevelChip, PageHeader, SectionTitle, Skeleton, Source } from "@/components/ui";
 import { EVERYONE } from "@/lib/access";
 import { displayName } from "@/lib/dogs";
 import { fosterReason } from "@/lib/match";
-import { formatDateTime, plain, timeAgo } from "@/lib/text";
+import { formatDateTime, timeAgo } from "@/lib/text";
 import type { Dog, Family, Match, MatchRun } from "@/lib/types";
 import { ACTIVITY, HOME, KIDS, LEVEL_RANK, postJSON } from "@/lib/ui";
 import { useApi } from "@/lib/useApi";
+import { whyThisMatch } from "@/lib/why";
 
 type Board = { ran?: boolean; matches: Match[]; unmatched: string[]; last_run?: MatchRun | null };
 type Row = { m: Match; dog: Dog; fam: Family };
@@ -138,7 +140,7 @@ function MatchPage() {
                   </div>
                   <p className="text-right"><span className="block font-display text-2xl font-semibold tabular-nums">{m.score}</span><span className="text-xs text-muted">fit</span></p>
                 </div>
-                <Reasons reasons={m.reasons} />
+                <div className="mt-3"><WhyLines why={whyThisMatch(dog, fam, m.reasons)} /></div>
                 <div className="mt-4 grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
                   <FamilyCard family={fam} />
                   <ExperienceFit dog={dog} family={fam} />
@@ -186,9 +188,7 @@ function MatchPage() {
                           <td className="px-4 py-3 text-right font-display text-xl font-semibold tabular-nums">{m.score}</td>
                           <td className="px-4 py-3">
                             {dog.handling_level === "Red" && <p className="mb-1 text-xs font-semibold text-rose-800">Foster to adopt. Vet sign-off required.</p>}
-                            <ul className="space-y-0.5 text-sm">
-                              {(m.reasons.length ? m.reasons : ["Good overall fit"]).map((r) => <li key={r}>{plain(r)}</li>)}
-                            </ul>
+                            <WhyLines why={whyThisMatch(dog, fam, m.reasons)} showSource={false} />
                           </td>
                         </tr>
                       ))}
@@ -207,7 +207,7 @@ function MatchPage() {
                         </div>
                         <span className="font-display text-xl font-semibold tabular-nums">{m.score}</span>
                       </div>
-                      <Reasons reasons={m.reasons} />
+                      <div className="mt-3"><WhyLines why={whyThisMatch(dog, fam, m.reasons)} showSource={false} /></div>
                     </li>
                   ))}
                 </ul>
@@ -215,7 +215,7 @@ function MatchPage() {
             )}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <Caption />
-              <Source>Dogs, families and matches are stored in MongoDB Atlas.</Source>
+              <Source>Why lines come from the pipeline&apos;s video evidence where available, otherwise the matching rules. Data stored in MongoDB Atlas.</Source>
             </div>
           </section>
 
@@ -238,19 +238,6 @@ function MatchPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function Reasons({ reasons }: { reasons: string[] }) {
-  return (
-    <ul className="mt-3 space-y-1 text-sm">
-      {(reasons.length ? reasons : ["Good overall fit"]).map((r) => (
-        <li key={r} className="flex gap-2">
-          <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-forest" />
-          {plain(r)}
-        </li>
-      ))}
-    </ul>
   );
 }
 
