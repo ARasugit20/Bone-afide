@@ -1,18 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export function PawMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 32 32" aria-hidden="true" className={cn("size-6", className)} fill="currentColor">
-      <ellipse cx="16" cy="21" rx="7" ry="6" />
-      <ellipse cx="7.5" cy="13" rx="3" ry="3.8" />
-      <ellipse cx="13" cy="7.5" rx="3" ry="3.8" />
-      <ellipse cx="19" cy="7.5" rx="3" ry="3.8" />
-      <ellipse cx="24.5" cy="13" rx="3" ry="3.8" />
-    </svg>
-  );
-}
-
 /** The single italic accent phrase inside a heading. */
 const accentClass = { forest: "text-forest", tennis: "text-tennis" } as const;
 
